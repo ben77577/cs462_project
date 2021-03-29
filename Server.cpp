@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include "Server.hpp"
 
+
 //constructor
 Server::Server(std::string ip, std::string po, std::string pr_pa){
 	ip_address = ip;
@@ -102,6 +103,11 @@ bool Server::readPackets(int newsockfd, const char* filename){
 	int packet_counter = 0;
 	//read packets from client
 	while((amtRead = read(newsockfd, buffer, pack_size)) != 0){
+		
+		//CRC code
+		Checksum csum;
+		std::string crc = csum.calculateCRC(std::string(buffer).substr(0, pack_size));
+		
 		//print packet information if appropriate
 		if(print_packets){
 			bool dots = true;
@@ -110,7 +116,9 @@ bool Server::readPackets(int newsockfd, const char* filename){
 			for(int loop = 0; loop < amtRead; loop++){
 				std::cout << buffer[loop];
 			}
-			std::cout << "\n";
+			
+			//print checksum
+			std::cout << "  - CRC: " << crc << "\n";
 		}
 				
 		//write packet to file

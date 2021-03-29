@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include "Client.hpp"
 
+
 //constructor
 Client::Client(std::string ip, std::string po, std::string pr_pa){
 	ip_address = ip;
@@ -67,7 +68,7 @@ void Client::sendPacket(const char* filename, int pack_size){
 	}
 			
 			
-	//set up pack_size to send
+	//set up pack_size to send (ADD 8 TO PACK_SIZE IF ADDING CRC)
 	std::string pack_size_string = std::to_string(pack_size);
 	//pad on left with 0 until 8 characters long
 	while(pack_size_string.length() != 8){
@@ -77,11 +78,16 @@ void Client::sendPacket(const char* filename, int pack_size){
 	//write packet size
 	write(socketfd, (char*)pack_size_char_arr, 8);
 			
+	
 			
 	int packet_counter = 0;
 	//read information from file, pSize chars at a time
 	while((result = fread(buffer, cSize, pSize, openedFile)) > 0){
-				
+		
+		//CRC code
+		Checksum csum;
+		std::string crc = csum.calculateCRC(std::string(buffer));
+		
 		//print the packet if appropriate
 		if(print_packets){
 			bool dots = true;
@@ -90,9 +96,11 @@ void Client::sendPacket(const char* filename, int pack_size){
 			for(int loop = 0; loop < result; loop++){
 				std::cout << buffer[loop];
 			}
-			std::cout << "\n";
+			//print checksum
+			std::cout << "  - CRC: " << crc << "\n";
 		}
-		//write the packet to the server
+		
+		//write the packet to the server (ADD 8 TO RESULT IF ADDING CRC) (and use this to add crc to end of buffer std::strcat(buffer, crc.c_str()))
 		write(socketfd, buffer, result);
 		packet_counter++;
 		bzero(buffer,buf_size);

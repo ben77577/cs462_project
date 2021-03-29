@@ -1,14 +1,17 @@
-main: main.o Client.o Server.o
-	g++ -o main main.o Client.o Server.o
+main: main.o Client.o Server.o Checksum.o
+	g++ -o main main.o Client.o Server.o Checksum.o
 	
-main.o: main.cpp Client.o Server.o
+main.o: main.cpp Client.o Server.o 
 	g++ -c main.cpp
 
-Client.o: Client.cpp Client.hpp
+Client.o: Client.cpp Client.hpp Checksum.o
 	g++ -c Client.cpp
 
-Server.o: Server.hpp
+Server.o: Server.cpp Server.hpp 
 	g++ -c Server.cpp
+	
+Checksum.o: Checksum.cpp Checksum.hpp
+	g++ -c Checksum.cpp
 
 clean: 
 	rm *.o

@@ -7,6 +7,8 @@
 #include <iomanip>
 #include <unistd.h>
 
+#include "Checksum.hpp"
+
 class Server{
 	private:
 		std::string ip_address;
