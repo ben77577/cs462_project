@@ -49,6 +49,7 @@ int Server::start(){
 	}
       
 	//listen for connections
+	std::cout << "Listening...\n";
 	listen(socketfd,5);
 	clientLength = sizeof(clientAddr);
 
@@ -98,32 +99,46 @@ bool Server::readPackets(int newsockfd, const char* filename){
 	char buffer[pack_size];
 	bzero(buffer,pack_size);
 			
-			
+	//total size of CRC, sequence numbers, etc...		
+	int packetInfoSize = 8;
+	
 	int amtRead;
 	int packet_counter = 0;
 	//read packets from client
 	while((amtRead = read(newsockfd, buffer, pack_size)) != 0){
 		
-		//CRC code
+		//take client crc off buffer
+		std::string clientCrc = std::string(buffer).substr(amtRead-packetInfoSize,packetInfoSize);
+		
+		//CRC code - run crc on server side
 		Checksum csum;
-		std::string crc = csum.calculateCRC(std::string(buffer).substr(0, pack_size));
+		std::string crc = csum.calculateCRC(std::string(buffer).substr(0, amtRead-packetInfoSize));
 		
 		//print packet information if appropriate
 		if(print_packets){
 			bool dots = true;
 			std::cout<<std::dec;
 			std::cout << "Received packet #" << packet_counter << " - ";
-			for(int loop = 0; loop < amtRead; loop++){
+			for(int loop = 0; loop < amtRead - packetInfoSize; loop++){
 				std::cout << buffer[loop];
 			}
 			
 			//print checksum
-			std::cout << "  - CRC: " << crc << "\n";
+			//std::cout << "  - CRC: " << crc << "    Client-calculated CRC: "<< clientCrc << "\n";
+		}
+		
+		//test if the two crcs are equal
+		if(clientCrc == crc){
+			//equal
+			std::cout << "   - The CRCs are equal\n";
+		}
+		else{
+			std::cout << "   - The CRCs are NOT equal...\n";
 		}
 				
 		//write packet to file
 		size_t cSize = sizeof(char);
-		size_t writeSize = amtRead;
+		size_t writeSize = amtRead - packetInfoSize;
 		fwrite(buffer,cSize, writeSize,openedFile);
 				
 		//increment counter and clear buffer
