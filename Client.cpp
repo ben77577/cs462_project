@@ -103,11 +103,11 @@ void Client::writePacket(char *writebuffer, int window_size, size_t pSize, Panel
 void Client::handleExpected(Panel *panel, int window_size){
 	//lock all panels - blocking any new change from threads
 	int shift = 0;
-
-	//for (shift = 0; shift < window_size; shift++)
-	//{
-	//	(panel + shift)->lockPkt();
-	//}
+	//TO-DO: lock()/unlock() throwing seg faults
+	/**for (shift = 0; shift < window_size; shift++)
+	{
+		(panel + shift)->lockPkt();
+	}**/
 	//loop until the first in window is no longer ack'd
 	int expectedReceived = 1;
 	while (expectedReceived)
@@ -140,10 +140,10 @@ void Client::handleExpected(Panel *panel, int window_size){
 		}
 	}
 	//unlock all panels - allowing threads to edit
-	//for (shift = 0; shift < window_size; shift++)
+	/**for (shift = 0; shift < window_size; shift++)
 	//{
 	//	(panel + shift)->releasePkt();
-	//}
+	}**/
 }
 //thread to read socket and mark panels as ack'd -> TO-DO: THREAD
 void Client::readAck(char *readBuffer, int window_size, Panel *panel)
@@ -270,11 +270,12 @@ void Client::sendPacket(const char *filename, int pack_size, int window_size, in
 				}
 			}
 		}
-		std::cout << "Outside of loop\n";
 		std::cout << "Buffer before write" << buffer << "\n";
+		//call write to loop through window and check for pkts to send - TO-DO:  std::thread wPkt([&](){ Client::writeAck(buffer, window_size, panel);});
 		writePacket(buffer, window_size, pSize, panel, buf_size);
 		//std::cout << "Return from write\n";
 		std::cout << "Buffer before read" << buffer << "\n";
+		//call to read socket for acks and change appropriate panel in window - TO-DO: std::thread rPkt([&](){ Client::readAck(buffer, window_size, panel);});
 		readAck(buffer, window_size, panel);
 		std::cout << "return from read\n";
 		std::cout << "buffer after read" << buffer << "\n";
@@ -295,6 +296,7 @@ void Client::sendPacket(const char *filename, int pack_size, int window_size, in
 			currentPanel++;
 		}
 		bzero(buffer, buf_size);
+		std::cout<<"buffer okay before fread?"<<buffer<<"\n";
 	}
 	//TO-DO:SEND EOD info to next available panel so write & read threads can end
 	//clean up
