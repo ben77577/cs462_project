@@ -16,8 +16,8 @@ class Panel{
         char * buffer;
         int pktSize;
         int fileDone;
+        int editFlag;
         //locks Panel for edits
-        std::mutex mtxPktLock;
 	public:
         Panel(int sn);
 		int getSeqNum();
@@ -28,8 +28,9 @@ class Panel{
         void markAsReceived();
         void fillBuffer(char * buffer);
         char* getBuffer();
-        void lockPkt();
+        int tryLockPkt();
         void releasePkt();
+        int getEditFlag();
         int isEmpty();
         void setAsEmpty();
         void setAsOccupied();

@@ -108,19 +108,13 @@ bool Server::readPackets(int newsockfd, const char* filename){
 	//read packets from client
 	while((amtRead = read(newsockfd, buffer, pack_size)) != 0){
 
-		//take client crc off buffer
-		std::cout<<buffer<<"\n";
-		std::cout<<amtRead<<"\n";
-		std::cout<<sizeof(buffer)<<"\n";
-		if (amtRead == 0) {
-		}
+		//take client crc & id off buffer		
 		std::string clientCrc = std::string(buffer).substr(amtRead-(packetInfoSize),packetInfoSize);
 		std::cout<<clientCrc<<"\n";
 		std::string id = std::string(buffer).substr(amtRead-(packetInfoSize+idSize),idSize);
 		std::cout<<id<<"\n";
 		//CRC code - run crc on server side
 		Checksum csum;
-		std::cout<<"Being sent to crc: " << std::string(buffer).substr(0, amtRead-(packetInfoSize+idSize));
 		std::string crc = csum.calculateCRC(std::string(buffer).substr(0, amtRead-(packetInfoSize+idSize)));
 		std::cout<<crc<<"\n";
 		//print packet information if appropriate

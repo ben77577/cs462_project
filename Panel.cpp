@@ -15,6 +15,7 @@ Panel::Panel(int sn){
     sentPkt = 0;
     receivedAck = 0;
     empty = 1;
+    editFlag = false;
 };
 //returns seqNum
 int Panel::getSeqNum() {
@@ -39,12 +40,11 @@ void Panel::markAsSent() {
 };
 // marks pkt as ACK'd
 void Panel::markAsReceived() {
-    std::cout<<"ACK'd\n";
-    //std::lock (mtxPktLock);
+    tryLockPkt();
     if(receivedAck = 0) {
         receivedAck=1;
     }
-    //mtxPktLock.unlock();
+    releasePkt();
 };
 char * Panel::getBuffer(){
     return buffer;
@@ -67,11 +67,19 @@ int Panel::isEmpty(){
 void Panel::setAsOccupied(){
     empty=0;
 }
-void Panel::lockPkt(){
-    std::cout<<mtxPktLock.try_lock()<<"\n";
+int Panel::tryLockPkt(){
+    std::cout<<"Not available: " <<editFlag<<"\n";
+    while(editFlag==1){
+        
+    }
+    editFlag = 1;
+    return editFlag;
+}
+int Panel::getEditFlag() {
+    return editFlag;
 }
 void Panel::releasePkt(){
-    mtxPktLock.unlock();
+    editFlag = 0;
 }
 time_t Panel::getTimeSent() {
     return timeSent;
