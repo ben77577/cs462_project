@@ -59,47 +59,55 @@ void Client::start()
 void Client::writePacket(char * writebuffer, int window_size, size_t pSize, Panel *panel, int buf_size)
 {
 	time_t now;
-	//TO-DO: while end of file not found
-	for (int i = 0; i < window_size; i++)
-	{
-		std::cout << "Panel" << i << "\n";
-		std::cout << (panel + i)->isEmpty() << " " << (panel + i)->isSent() << " " << time(&now) - (panel + i)->getTimeSent() << "\n";
-		if ((panel + i)->isEmpty() == 0 && ((panel + i)->isSent() == 0 || (time(&now) - (panel + i)->getTimeSent() > .01)) && !(panel+i)->isLast())
+	int foundEOF = 0;
+	//while(!foundEOF) {
+		for (int i = 0; i < window_size; i++)
 		{
-			int id = (panel + i)->getSeqNum();
-			writebuffer = (panel + i)->getBuffer();
-			send(socketfd, writebuffer, pSize + 8 + 5, 0);
-			if (!send)
+			std::cout << "Panel" << i << "\n";
+			std::cout << (panel + i)->isEmpty() << " " << (panel + i)->isSent() << " " << time(&now) - (panel + i)->getTimeSent() << "\n";
+			if ((panel + i)->isEmpty() == 0 && ((panel + i)->isSent() == 0 || (time(&now) - (panel + i)->getTimeSent() > .01)) && !(panel+i)->isLast())
 			{
-				std::cout << "Packet #" << id << " failed to send.";
-			}
-			else
-			{
-				i = window_size;
-				(panel + i)->markAsSent();
-				//print the packet if appropriate
-				if (print_packets)
+				std::cout<<"Attempting to lock panel #"<<i<<"\n";
+				(panel+i)->lockPkt();
+				int id = (panel + i)->getSeqNum();
+				writebuffer = (panel + i)->getBuffer();
+				send(socketfd, writebuffer, pSize + 8 + 5, 0);
+				if (!send)
 				{
-					bool dots = true;
-					std::cout << std::dec;
-					std::cout << "Sent packet #" << id << " - ";
-					for (int loop = 0; loop < buf_size + 5; loop++)
-					{
-						std::cout << writebuffer[loop];
-					}
-					std::cout << "\n";
+					std::cout << "Packet #" << id << " failed to send.\n";
 				}
-				std::cout << "outside print\n";
-				time_t sentTime;
-				time(&sentTime);
-				std::cout << sentTime << "\n";
-				(panel + 1)->setTimeSent(sentTime);
-				bzero(writebuffer, buf_size);
+				else
+				{
+					i = window_size;
+					(panel + i)->markAsSent();
+					//print the packet if appropriate
+					if (print_packets)
+					{
+						bool dots = true;
+						std::cout << std::dec;
+						std::cout << "Sent packet #" << id << " - ";
+						for (int loop = 0; loop < buf_size + 5; loop++)
+						{
+							std::cout << writebuffer[loop];
+						}
+						std::cout << "\n";
+					}
+					std::cout << "outside print\n";
+					time_t sentTime;
+					time(&sentTime);
+					std::cout << sentTime << "\n";
+					(panel + 1)->setTimeSent(sentTime);
+					bzero(writebuffer, buf_size);
+				}
+				(panel+i)->releasePkt();
+			}else if (i == 0 && (panel+i)->isLast()) {
+				//EOF found in first panel, exit function
+				std::cout<<"EOF found\n";
+				foundEOF = 1;
+				i=window_size;
 			}
-		}else if (i == 0 && (panel+i)->isLast()) {
-			//end thread
 		}
-	}
+	//}
 }
 //handles shifting of window when expected pkt is ack'd - NOT A THREAD
 void Client::handleExpected(Panel *panel, int window_size){
@@ -149,30 +157,24 @@ void Client::handleExpected(Panel *panel, int window_size){
 	}**/
 }
 //thread to read socket and mark panels as ack'd -> TO-DO: THREAD
-void Client::readAck(char * readBuffer, int window_size, Panel *panel)
-{
+void Client::readAck(char * readBuffer, int window_size, Panel *panel){
 	read(socketfd, readBuffer, 8);
 	//while(read(socketfd, buffer, 8)){ -- structure of eventual thread
-	if (read < 0)
-	{
+	if (read < 0){
 		std::cout << "Failure to catch ACK \n";
 	}
-	else
-	{
+	else{
 		std::string ack = std::string(readBuffer);
 		std::cout << "Ack #" << ack << " received \n";
 		int ackComp = std::stoi(ack);
 		std::cout << "ackComp" << ackComp;
-		for (int i = 0; i < window_size; i++)
-		{
+		for (int i = 0; i < window_size; i++){
 			std::cout << (panel + i)->getSeqNum() << "=?" << ackComp;
-			if ((panel + i)->getSeqNum() == ackComp)
-			{
+			if ((panel + i)->getSeqNum() == ackComp){
 				std::cout << "Found the right panel " << ackComp << "\n";
 				(panel + i)->markAsReceived();
-				if (i == 0)
-				{
-					std::cout<<"handling expected";
+				if (i == 0){
+					std::cout<<"handling expected\n";
 					handleExpected(panel, window_size);
 				}
 			}
@@ -259,6 +261,7 @@ void Client::sendPacket(const char *filename, int pack_size, int window_size, in
 				std::cout << (panel + i)->isEmpty() << "\n";
 				if ((panel + i)->isEmpty())
 				{
+					(panel+i)->lockPkt();
 					std::cout << "Panel is empty: " << i << "\n";
 					(panel + i)->fillBuffer(std::strcat(std::strcat(buffer, id.c_str()), crc.c_str()));
 					(panel + i)->setSeqNum(packet_counter);
@@ -268,6 +271,7 @@ void Client::sendPacket(const char *filename, int pack_size, int window_size, in
 					emptyNotFound = 0;
 					//exit for
 					i = window_size;
+					(panel+i)->releasePkt();
 				}
 			}
 		}

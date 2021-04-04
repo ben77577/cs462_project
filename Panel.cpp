@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <chrono>
 #include "Panel.hpp"
-
+#include <mutex>
 //constructor
 Panel::Panel(int sn){
     seqNum = sn;
@@ -39,9 +39,12 @@ void Panel::markAsSent() {
 };
 // marks pkt as ACK'd
 void Panel::markAsReceived() {
+    std::cout<<"ACK'd\n";
+    //std::lock (mtxPktLock);
     if(receivedAck = 0) {
         receivedAck=1;
     }
+    //mtxPktLock.unlock();
 };
 char * Panel::getBuffer(){
     return buffer;
@@ -65,7 +68,7 @@ void Panel::setAsOccupied(){
     empty=0;
 }
 void Panel::lockPkt(){
-    mtxPktLock.lock();
+    std::cout<<mtxPktLock.try_lock()<<"\n";
 }
 void Panel::releasePkt(){
     mtxPktLock.unlock();
