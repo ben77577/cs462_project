@@ -15,6 +15,7 @@ class Panel{
         int empty;
         char * buffer;
         int pktSize;
+        int fileDone;
         //locks Panel for edits
         std::mutex mtxPktLock;
 	public:
@@ -36,4 +37,6 @@ class Panel{
         void setTimeSent(time_t currentTime);
         void setPktSize(int givenSize);
         int getPktSize();
+        int isLast();
+        void setAsLast();
 };

@@ -56,7 +56,7 @@ void Client::start()
 	}
 }
 //thread to find unsent/timedout pkts and resend/send pkts appropriately - TO-DO: THREAD
-void Client::writePacket(char *writebuffer, int window_size, size_t pSize, Panel *panel, int buf_size)
+void Client::writePacket(char * writebuffer, int window_size, size_t pSize, Panel *panel, int buf_size)
 {
 	time_t now;
 	//TO-DO: while end of file not found
@@ -64,7 +64,7 @@ void Client::writePacket(char *writebuffer, int window_size, size_t pSize, Panel
 	{
 		std::cout << "Panel" << i << "\n";
 		std::cout << (panel + i)->isEmpty() << " " << (panel + i)->isSent() << " " << time(&now) - (panel + i)->getTimeSent() << "\n";
-		if ((panel + i)->isEmpty() == 0 && ((panel + i)->isSent() == 0 || (time(&now) - (panel + i)->getTimeSent() > .01)))
+		if ((panel + i)->isEmpty() == 0 && ((panel + i)->isSent() == 0 || (time(&now) - (panel + i)->getTimeSent() > .01)) && !(panel+i)->isLast())
 		{
 			int id = (panel + i)->getSeqNum();
 			writebuffer = (panel + i)->getBuffer();
@@ -96,6 +96,8 @@ void Client::writePacket(char *writebuffer, int window_size, size_t pSize, Panel
 				(panel + 1)->setTimeSent(sentTime);
 				bzero(writebuffer, buf_size);
 			}
+		}else if (i == 0 && (panel+i)->isLast()) {
+			//end thread
 		}
 	}
 }
@@ -118,6 +120,7 @@ void Client::handleExpected(Panel *panel, int window_size){
 		while (!(panel + shift + 1)->isEmpty() && shift < window_size - 1)
 		{
 			//shift panel back one
+			//TO-DO: make into its own function in PANEL::PANEL
 			(panel+shift)->setSeqNum((panel+shift+1)->getSeqNum());
 			(panel+shift)->fillBuffer((panel+shift+1)->getBuffer());
 			(panel+shift)->setPktSize((panel+shift+1)->getPktSize());
@@ -146,7 +149,7 @@ void Client::handleExpected(Panel *panel, int window_size){
 	}**/
 }
 //thread to read socket and mark panels as ack'd -> TO-DO: THREAD
-void Client::readAck(char *readBuffer, int window_size, Panel *panel)
+void Client::readAck(char * readBuffer, int window_size, Panel *panel)
 {
 	read(socketfd, readBuffer, 8);
 	//while(read(socketfd, buffer, 8)){ -- structure of eventual thread
@@ -208,8 +211,8 @@ void Client::sendPacket(const char *filename, int pack_size, int window_size, in
 	}
 
 	//set up buffer
-	//buffer =(char*)malloc(buf_size);
-	char buffer[buf_size];
+	char * buffer =(char*)malloc(buf_size);
+	//char buffer[buf_size];
 	bzero(buffer, buf_size);
 
 	if (buffer == NULL)
@@ -232,8 +235,6 @@ void Client::sendPacket(const char *filename, int pack_size, int window_size, in
 	int currentPanel = 0;
 	int packet_counter = 0;
 	//start ACK thread
-	//std::thread rPkt([&](){ Client::readAck(buffer);});
-	//rPkt.join();
 	//read information from file, pSize chars at a time
 	while ((result = fread(buffer, cSize, pSize, openedFile)) > 0)
 	{
@@ -279,26 +280,39 @@ void Client::sendPacket(const char *filename, int pack_size, int window_size, in
 		readAck(buffer, window_size, panel);
 		std::cout << "return from read\n";
 		std::cout << "buffer after read" << buffer << "\n";
-		if (packet_counter == sequence_max)
-		{
+		if (packet_counter == sequence_max){
 			packet_counter = 0;
 		}
-		else
-		{
+		else{
 			packet_counter++;
 		}
-		if (currentPanel == window_size)
-		{
+		if (currentPanel == window_size){
 			currentPanel = 0;
 		}
-		else
-		{
+		else{
 			currentPanel++;
 		}
 		bzero(buffer, buf_size);
 		std::cout<<"buffer okay before fread?"<<buffer<<"\n";
 	}
-	//TO-DO:SEND EOD info to next available panel so write & read threads can end
+	//continue to loop until a panel is empty
+	int emptyNotFound = 1;
+		while (emptyNotFound){
+			for (int i = 0; i < window_size; i++){
+				std::cout << "Panel for loop" << i << "\n";
+				std::cout << (panel + i)->isEmpty() << "\n";
+				if ((panel + i)->isEmpty()){
+					std::cout << "Panel is empty: " << i << "\n";
+					(panel+i)->setAsOccupied();
+					(panel+i)->setAsLast();
+					//exit while
+					emptyNotFound = 0;
+					//exit for
+					i = window_size;
+				}
+			}
+		}
+	//TO-DO: wait for threads to finish
 	//clean up
 	//free(buffer);
 	close(socketfd);

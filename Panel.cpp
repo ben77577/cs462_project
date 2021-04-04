@@ -82,3 +82,9 @@ void Panel::setPktSize(int givenSize) {
 int Panel::getPktSize() {
     return pktSize;
 }
+void Panel::setAsLast() {
+    fileDone = 1;
+}
+int Panel::isLast() {
+    return fileDone;
+}
