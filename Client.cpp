@@ -196,13 +196,14 @@ void Client::sendPacket(const char *filename, int pack_size, int window_size, in
 	}
 	//total size of CRC, sequence numbers, etc...
 	int packetInfoSize = 8;
+	int idSize = 5;
 	//size_t
 	int cSize = sizeof(char);
 	//size_t
 	int pSize = pack_size;
 	int result;
 	//char * buffer;
-	int buf_size = sizeof(char) * (pack_size + packetInfoSize);
+	int buf_size = sizeof(char) * (pack_size + packetInfoSize+idSize);
 
 	//open file for reading
 	FILE *openedFile = fopen(filename, "r+");
@@ -224,7 +225,7 @@ void Client::sendPacket(const char *filename, int pack_size, int window_size, in
 	}
 
 	//set up pack_size to send (ADD 8 TO PACK_SIZE IF ADDING CRC)
-	std::string pack_size_string = std::to_string(pack_size + packetInfoSize);
+	std::string pack_size_string = std::to_string(pack_size + packetInfoSize+idSize);
 	//pad on left with 0 until 8 characters long
 	while (pack_size_string.length() != 8)
 	{
@@ -232,6 +233,7 @@ void Client::sendPacket(const char *filename, int pack_size, int window_size, in
 	}
 	char const *pack_size_char_arr = pack_size_string.c_str();
 	//write packet size
+	std::cout<<(char *)pack_size_char_arr<<"\n";
 	write(socketfd, (char *)pack_size_char_arr, 8);
 
 	int currentPanel = 0;
@@ -263,7 +265,8 @@ void Client::sendPacket(const char *filename, int pack_size, int window_size, in
 				{
 					(panel+i)->lockPkt();
 					std::cout << "Panel is empty: " << i << "\n";
-					(panel + i)->fillBuffer(std::strcat(std::strcat(buffer, id.c_str()), crc.c_str()));
+					(panel + i)->fillBuffer(buffer);
+					std::cout<<"buffer filled "<<(panel+i)->getBuffer()<<"\n";
 					(panel + i)->setSeqNum(packet_counter);
 					(panel + i)->setAsOccupied();
 					(panel + i)->setPktSize(result);
@@ -299,7 +302,7 @@ void Client::sendPacket(const char *filename, int pack_size, int window_size, in
 		bzero(buffer, buf_size);
 		std::cout<<"buffer okay before fread?"<<buffer<<"\n";
 	}
-	//continue to loop until a panel is empty
+	/**continue to loop until a panel is empty
 	int emptyNotFound = 1;
 		while (emptyNotFound){
 			for (int i = 0; i < window_size; i++){
@@ -315,7 +318,7 @@ void Client::sendPacket(const char *filename, int pack_size, int window_size, in
 					i = window_size;
 				}
 			}
-		}
+		}**/
 	//TO-DO: wait for threads to finish
 	//clean up
 	//free(buffer);

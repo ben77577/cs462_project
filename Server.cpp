@@ -94,7 +94,7 @@ bool Server::readPackets(int newsockfd, const char* filename){
 	std::stringstream str(p); 
 	int pack_size;  
 	str >> pack_size;  
-		
+	std::cout<<"pack_size"<<pack_size<<"\n";
 	//create and zero buffer
 	char buffer[pack_size];
 	bzero(buffer,pack_size);
@@ -106,17 +106,21 @@ bool Server::readPackets(int newsockfd, const char* filename){
 	int amtRead;
 	int packet_counter = 0;
 	//read packets from client
-	while((amtRead = read(newsockfd, buffer, pack_size+5)) != 0){
+	while((amtRead = read(newsockfd, buffer, pack_size)) != 0){
 
 		//take client crc off buffer
 		std::cout<<buffer<<"\n";
 		std::cout<<amtRead<<"\n";
+		std::cout<<sizeof(buffer)<<"\n";
+		if (amtRead == 0) {
+		}
 		std::string clientCrc = std::string(buffer).substr(amtRead-(packetInfoSize),packetInfoSize);
 		std::cout<<clientCrc<<"\n";
 		std::string id = std::string(buffer).substr(amtRead-(packetInfoSize+idSize),idSize);
 		std::cout<<id<<"\n";
 		//CRC code - run crc on server side
 		Checksum csum;
+		std::cout<<"Being sent to crc: " << std::string(buffer).substr(0, amtRead-(packetInfoSize+idSize));
 		std::string crc = csum.calculateCRC(std::string(buffer).substr(0, amtRead-(packetInfoSize+idSize)));
 		std::cout<<crc<<"\n";
 		//print packet information if appropriate
@@ -127,7 +131,7 @@ bool Server::readPackets(int newsockfd, const char* filename){
 			for(int loop = 0; loop < amtRead - packetInfoSize; loop++){
 				std::cout << buffer[loop];
 			}
-			
+			std::cout<<"\n";
 			//print checksum
 			//std::cout << "  - CRC: " << crc << "    Client-calculated CRC: "<< clientCrc << "\n";
 		}
@@ -149,11 +153,11 @@ bool Server::readPackets(int newsockfd, const char* filename){
 		//increment counter and clear buffer
 		packet_counter++;
 		bzero(buffer,pack_size);
-		send(newsockfd, std::strcat(buffer, id.c_str()), packetInfoSize, 0);
+		send(newsockfd, std::strcat(buffer, id.c_str()), 8, 0);
 		if (!send) {
-			std::cout<<"Failure to send ACK for packet #" << id;
+			std::cout<<"Failure to send ACK for packet #" << id<<"\n";
 		}else{
-			std::cout<<"ACK " << id << "sent";
+			std::cout<<"ACK " << id << "sent\n";
 		}
 	}
 			
