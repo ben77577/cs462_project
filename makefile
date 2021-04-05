@@ -1,5 +1,5 @@
 main: main.o Client.o Server.o Checksum.o
-	g++ -o main main.o Panel.o Client.o Server.o Checksum.o
+	g++ -o main main.o Panel.o Client.o Server.o Checksum.o -pthread
 	
 main.o: main.cpp Client.o Server.o 
 	g++ -c main.cpp
