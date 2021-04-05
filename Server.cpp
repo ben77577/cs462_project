@@ -139,7 +139,7 @@ bool Server::readPackets(int newsockfd, const char* filename){
 				
 		//write packet to file
 		size_t cSize = sizeof(char);
-		size_t writeSize = amtRead - packetInfoSize;
+		size_t writeSize = amtRead - packetInfoSize - idSize;
 		fwrite(buffer,cSize, writeSize,openedFile);
 				
 		//increment counter and clear buffer

@@ -285,7 +285,9 @@ void Client::startThreads(const char *filename, int pack_size, int window_size, 
 	//write packet size to server
 	write(socketfd, (char *)pack_size_char_arr, 8);
 	//TO-DO:set as thread
-	sendPacket(filename, pSize, cSize, window_size, sequence_max, buffer, panel, buf_size);
+	//sendPacket(filename, pSize, cSize, window_size, sequence_max, buffer, panel, buf_size);
+	std::thread sPkt([&](){ Client::sendPacket(filename, pSize, cSize, window_size, sequence_max, buffer, panel, buf_size);});
+	sPkt.join();
 	//writePacket(thread);
 	//readAck(thread);
 	//clean up
