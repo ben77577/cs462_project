@@ -10,12 +10,14 @@
 #include "Panel.hpp"
 #include <mutex>
 //constructor
-Panel::Panel(int sn){
-    seqNum = sn;
+Panel::Panel(){
     sentPkt = 0;
     receivedAck = 0;
     empty = 1;
-    editFlag = false;
+    fileDone = 0;
+    timeSent = 0; //epoch now-timeSent>=timeout -> resend pkt -> timeSent++;
+    numberOfSent = 0;
+    pktSize = 0;
 };
 //returns seqNum
 int Panel::getSeqNum() {
@@ -34,17 +36,15 @@ int Panel::isReceived() {
     };
 // mark pkt as sent to server
 void Panel::markAsSent() {
-    if(sentPkt = 0) {
-        sentPkt=1;
-    }
+    sentPkt=1;
 };
 // marks pkt as ACK'd
 void Panel::markAsReceived() {
-    tryLockPkt();
+    std::lock_guard<std::mutex> lock(mtxPktLock);
     if(receivedAck = 0) {
         receivedAck=1;
     }
-    releasePkt();
+    //releasePkt();
 };
 char * Panel::getBuffer(){
     return buffer;
@@ -68,18 +68,9 @@ void Panel::setAsOccupied(){
     empty=0;
 }
 int Panel::tryLockPkt(){
-    std::cout<<"Not available: " <<editFlag<<"\n";
-    while(editFlag==1){
-        
-    }
-    editFlag = 1;
-    return editFlag;
-}
-int Panel::getEditFlag() {
-    return editFlag;
+    return 0;
 }
 void Panel::releasePkt(){
-    editFlag = 0;
 }
 time_t Panel::getTimeSent() {
     return timeSent;
@@ -98,4 +89,15 @@ void Panel::setAsLast() {
 }
 int Panel::isLast() {
     return fileDone;
+}
+void Panel::summary() {
+    std::cout<<"Summary for panel " <<seqNum<<"\n";
+    std::cout<<"seqNum"<<seqNum
+        <<"sentPkt = "<<sentPkt<<"\n"
+        <<"receivedAck = "<<receivedAck
+        <<"timeSent = "<<timeSent<<"\n"
+        <<"numberOfSent = "<<numberOfSent
+        <<"empty = "<<empty
+        <<"pktSiz = "<<pktSize<<"\n"
+        <<"fileDone = "<<fileDone<<"\n\n";
 }

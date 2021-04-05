@@ -110,9 +110,7 @@ bool Server::readPackets(int newsockfd, const char* filename){
 
 		//take client crc & id off buffer		
 		std::string clientCrc = std::string(buffer).substr(amtRead-(packetInfoSize),packetInfoSize);
-		std::cout<<clientCrc<<"\n";
 		std::string id = std::string(buffer).substr(amtRead-(packetInfoSize+idSize),idSize);
-		std::cout<<id<<"\n";
 		//CRC code - run crc on server side
 		Checksum csum;
 		std::string crc = csum.calculateCRC(std::string(buffer).substr(0, amtRead-(packetInfoSize+idSize)));
@@ -147,11 +145,13 @@ bool Server::readPackets(int newsockfd, const char* filename){
 		//increment counter and clear buffer
 		packet_counter++;
 		bzero(buffer,pack_size);
-		send(newsockfd, std::strcat(buffer, id.c_str()), 8, 0);
-		if (!send) {
-			std::cout<<"Failure to send ACK for packet #" << id<<"\n";
-		}else{
-			std::cout<<"ACK " << id << "sent\n";
+		if (clientCrc == crc) {
+			send(newsockfd, std::strcat(buffer, id.c_str()), 8, 0);
+			if (!send) {
+				std::cout<<"Failure to send ACK for packet #" << id<<"\n";
+			}else{
+				std::cout<<"ACK " << id << " sent\n";
+			}
 		}
 	}
 			

@@ -77,7 +77,7 @@ int main(){
 		//start the client
 		client.start();
 		//send packets to the server
-		client.sendPacket(filename.c_str(), packet_size, window_size, sequence_max);
+		client.startThreads(filename.c_str(), packet_size, window_size, sequence_max);
 		
 		//call md5sum command on input file
 		std::cout << "MD5:\n";

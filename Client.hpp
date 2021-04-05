@@ -18,13 +18,16 @@ class Client{
 		struct sockaddr_in sockaddr;
 		bool print_packets;
 		int window_size;
+		std::mutex windowLock;
 
 	public:
 		Client(std::string ip, std::string po, std::string pr_pa);
 		void start();
-		void sendPacket(const char* filename, int pack_size, int ws, int sm);
+		void sendPacket(const char *filename, int psize, int cSize, int window_size, int sequence_max, char * buffer, Panel *panel, int buf_size);
 		void writePacket(char * buffer, int window_size, size_t pSize, Panel *panel, int buf_size);
 		void readAck(char * buffer, int window_size, Panel *panel);
 		const int getWindowSize(int windowSize);
 		void handleExpected(Panel *panel, int window_size);
+		void startThreads(const char *filename, int pack_size, int window_size, int sequence_max);
+		int writeMyPkt(char * writebuffer, int window_size, size_t pSize, Panel *panel, int buf_size);
 };
