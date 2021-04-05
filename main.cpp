@@ -19,7 +19,7 @@ int main(){
 	std::string filename;
 	std::string print_packets;
 	int packet_size;
-	int window_size;
+	int windowSize;
 	int sequence_max;
 	
 	//get general information from user
@@ -31,7 +31,7 @@ int main(){
 	
 	//server
 	if(client_server.compare("server") == 0){
-		std::cout << "Creating server..";
+		std::cout << "Creating server..\n";
 		//get server-specific information from user
 		std::cout << "Port # ";
 		std::cin >> port_number;
@@ -57,7 +57,7 @@ int main(){
 	}
 	//client
 	else if(client_server.compare("client") == 0){
-		std::cout<<"Creating client...";
+		std::cout<<"Creating client...\n";
 		//get client-specific information from user
 		std::cout << "Connect to IP address: ";
 		std::cin >> ip_address;
@@ -68,7 +68,7 @@ int main(){
 		std::cout << "Pkt size: ";
 		std::cin >> packet_size;
 		std::cout << "Window size: ";
-		std::cin >> window_size;
+		std::cin >> windowSize;
 		std::cout << "Sequence number range: ";
 		std:: cin >> sequence_max;
 		
@@ -77,7 +77,7 @@ int main(){
 		//start the client
 		client.start();
 		//send packets to the server
-		client.startThreads(filename.c_str(), packet_size, window_size, sequence_max);
+		client.startThreads(filename.c_str(), packet_size, windowSize, sequence_max);
 		
 		//call md5sum command on input file
 		std::cout << "MD5:\n";

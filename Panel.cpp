@@ -11,13 +11,14 @@
 #include <mutex>
 //constructor
 Panel::Panel(){
+    seqNum = -1;
     sentPkt = 0;
     receivedAck = 0;
     empty = 1;
     fileDone = 0;
     timeSent = 0; //epoch now-timeSent>=timeout -> resend pkt -> timeSent++;
     numberOfSent = 0;
-    pktSize = 0;
+    pktSize = 0;  
 };
 //returns seqNum
 int Panel::getSeqNum() {
@@ -40,20 +41,19 @@ void Panel::markAsSent() {
 };
 // marks pkt as ACK'd
 void Panel::markAsReceived() {
-    std::lock_guard<std::mutex> lock(mtxPktLock);
     if(receivedAck = 0) {
         receivedAck=1;
     }
     //releasePkt();
 };
 char * Panel::getBuffer(){
-    return buffer;
+    return panelBuffer;
 }
 void Panel::fillBuffer(char * givenBuffer) {
-    buffer = givenBuffer;
+    memcpy(panelBuffer, givenBuffer, 18);
 };
 void Panel::setAsEmpty(){
-    bzero(buffer, sizeof(buffer));
+    bzero(panelBuffer, sizeof(panelBufferSize));
     seqNum = -1;
     sentPkt = 0;
     receivedAck = 0;
@@ -100,4 +100,19 @@ void Panel::summary() {
         <<"empty = "<<empty
         <<"pktSiz = "<<pktSize<<"\n"
         <<"fileDone = "<<fileDone<<"\n\n";
+        if(empty!=1) {
+            std::cout<<panelBuffer<<"\n";
+        }
+}
+void Panel::allocateBuffer(int buffer_size) {
+    panelBufferSize = buffer_size;
+    panelBuffer =(char*)malloc(buffer_size);
+	//char buffer[buf_size];
+	bzero(panelBuffer, panelBufferSize);
+
+	if (panelBuffer == NULL)
+	{
+		fputs("Error setting up buffer", stderr);
+		exit(2);
+	}
 }

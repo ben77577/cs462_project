@@ -13,9 +13,10 @@ class Panel{
         time_t timeSent; //epoch now-timeSent>=timeout -> resend pkt -> timeSent++;
         int numberOfSent;
         int empty;
-        char * buffer;
+        char * panelBuffer;
         int pktSize;
         int fileDone;
+        int panelBufferSize;
         //locks Panel for edits
         std::mutex mtxPktLock;
 	public:
@@ -40,4 +41,5 @@ class Panel{
         int isLast();
         void setAsLast();
         void summary();
+        void allocateBuffer(int buffer_size);
 };
