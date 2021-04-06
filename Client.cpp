@@ -317,7 +317,7 @@ void Client::sendPacket(const char *filename, char * buffer, Panel *panel, int p
 //calculates the current epoch in milliseconds
 uint64_t milliNow() {
   using namespace std::chrono;
-  return duration_cast<milliseconds>(system_clock::now()).count();
+  return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 }
 //Initializes global variables & begins sendPacket thread
 void Client::startThreads(const char *filename, int pack_size, int windowSize, int sequence_max){
