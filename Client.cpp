@@ -299,9 +299,9 @@ void Client::sendPacket(const char *filename, char * buffer, Panel *panel, int p
 	}
 	//continue to loop until a panel is empty
 	int emptyNotFound = 0;
-		while (!emptyNotFound){
-			emptyNotFound = findAndFillEOF(panel);
-			}
+	while (!emptyNotFound){
+		emptyNotFound = findAndFillEOF(panel);
+	}
 	wPkt.join();
 	rPkt.join();
 	close(socketfd);
@@ -309,6 +309,12 @@ void Client::sendPacket(const char *filename, char * buffer, Panel *panel, int p
 	std::cout << std::dec;
 	std::cout << "\nSend Success!\n";
 }
+//calculates the current epoch in milliseconds
+uint64_t milliNow() {
+  using namespace std::chrono;
+  return duration_cast<milliseconds>(system_clock::now()).count();
+}
+//Initializes global variables & begins sendPacket thread
 void Client::startThreads(const char *filename, int pack_size, int windowSize, int sequence_max){
 	std::cout<<"startThreads\n";
 	//initialize array(window)
@@ -349,8 +355,18 @@ void Client::startThreads(const char *filename, int pack_size, int windowSize, i
 		pack_size_string = "0" + pack_size_string;
 	}
 	char const *pack_size_char_arr = pack_size_string.c_str();
+	//start timer for RTT
+	uint64_t startSend = milliNow();
+	uint64_t endSend;
 	//write packet size to server
 	write(socketfd, (char *)pack_size_char_arr, 8);
+	bzero(buffer, buf_size);
+	read(socketfd, buffer, 8);
+	if (read>0) {
+		endSend = milliNow();
+	}
+	uint64_t RTT = startSend-endSend;
+	std::cout<< startSend << "-"<<endSend << "=" << RTT<<"\n";
 	//TO-DO:set as thread
 	//sendPacket(filename, pSize, cSize, window_size, sequence_max, buffer, panel, buf_size);
 	std::thread sPkt([&](){ Client::sendPacket(filename, buffer, panel, pack_size);});

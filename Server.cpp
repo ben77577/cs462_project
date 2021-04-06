@@ -98,6 +98,15 @@ bool Server::readPackets(int newsockfd, const char* filename){
 	//create and zero buffer
 	char buffer[pack_size];
 	bzero(buffer,pack_size);
+	int receivedPktSize = -1;
+	std::string rps_string = std::to_string(receivedPktSize);
+	send(newsockfd, std::strcat(buffer, rps_string.c_str()), 8, 0);
+	bzero(buffer,pack_size);
+	if (!send) {
+		std::cout<<"Failure to send RTT ACK \n";
+	}else{
+		std::cout<<"Successfully sent RTT ACK\n";
+	}
 			
 	//total size of CRC, sequence numbers, etc...		
 	int packetInfoSize = 8;

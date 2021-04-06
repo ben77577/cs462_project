@@ -37,4 +37,5 @@ class Client{
 		int writeMyPkt(Panel *panel);
 		int findAndFillBuffer(Panel *panel, char *buffer, int packet_counter, int result);
 		int findAndFillEOF(Panel *panel);
+		uint64_t milliNow();
 };
