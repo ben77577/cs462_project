@@ -273,6 +273,11 @@ void Client::sendPacket(const char *filename, char * buffer, Panel *panel, int p
 		//CRC code
 		Checksum csum;
 		std::cout<<"Buffer to be crc'd: " << buffer << "\n";
+		
+		if(numbPcktsExpected == (packet_counter + 1)){
+			buffer = const_cast<char*>((std::string(buffer).substr(0,result-1)).c_str());
+		}
+		
 		std::string crc = csum.calculateCRC(std::string(buffer));
 		//construct id
 		std::string id = std::to_string(packet_counter);
@@ -297,11 +302,12 @@ void Client::sendPacket(const char *filename, char * buffer, Panel *panel, int p
 		}
 		bzero(buffer, buf_size);
 	}
-	//continue to loop until a panel is empty
+	
 	int emptyNotFound = 0;
 		while (!emptyNotFound){
 			emptyNotFound = findAndFillEOF(panel);
 			}
+	
 	wPkt.join();
 	rPkt.join();
 	close(socketfd);
