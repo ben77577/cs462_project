@@ -134,7 +134,7 @@ void Client::handleExpected(Panel *panel, int window_size){
 		shift = 0;
 		//loop until found the end of window or next panel is empty
 		while (shift < window_size - 2 && !(panel + shift + 1)->isEmpty()){
-			std::cout<<"readAck: Shifting panles at indeces " << shift << " and " << shift+1<< "\n";
+			std::cout<<"readAck: Shifting panels at indeces " << shift << " and " << shift+1<< "\n";
 			//shift panel back one
 			//TO-DO(maybe): make into its own function in PANEL::PANEL
 			(panel+shift)->setSeqNum((panel+shift+1)->getSeqNum());
@@ -217,8 +217,10 @@ int Client::findAndFillBuffer(Panel *panel, char *buffer, int packet_counter, in
 }
 //find and populate empty panel with EOF information
 int Client::findAndFillEOF(Panel *panel) {
+	std::cout<<"findAndFillEOF\n";
 	int foundEmpty = 0;
 	std::lock_guard<std::mutex> window_lock(windowLock);
+	std::cout<<"starting loop\n";
 	for (int i = 0; i < window_size; i++){
 				std::lock_guard<std::mutex> window_lock(windowLock);
 				std::cout<<"sendpacket: end of file is found, sendPacket has it locked\n";
@@ -268,14 +270,20 @@ void Client::sendPacket(const char *filename, char * buffer, Panel *panel, int p
 	}
 	numbPcktsExpected = fileSize/pack_size;
 	int currentPacket = 0;
+	int foundEOF = 0;
+	bool lastPacket = 0;
 	while ((result = fread(buffer, cSize, pSize, openedFile)) > 0)
 	{	
 		//CRC code
 		Checksum csum;
 		std::cout<<"Buffer to be crc'd: " << buffer << "\n";
 		
-		if(numbPcktsExpected == (packet_counter + 1)){
+		if(numbPcktsExpected == (currentPacket)){
 			buffer = const_cast<char*>((std::string(buffer).substr(0,result-1)).c_str());
+			if (strlen(buffer)==0) {
+				break;
+			}
+			lastPacket = 1;
 		}
 		
 		std::string crc = csum.calculateCRC(std::string(buffer));
@@ -300,10 +308,14 @@ void Client::sendPacket(const char *filename, char * buffer, Panel *panel, int p
 		}else{
 			packet_counter++;
 		}
+		currentPacket++;
 		bzero(buffer, buf_size);
+		if (lastPacket) {
+			break;
+		}
 	}
-	
 	int emptyNotFound = 0;
+	std::cout<<"Attempting to add EOF packet\n";
 	while (!emptyNotFound){
 		emptyNotFound = findAndFillEOF(panel);
 	}
