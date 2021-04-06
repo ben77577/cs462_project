@@ -79,7 +79,7 @@ int Client::writeMyPkt(Panel *panel) {
 				int writeID = (panel + writeLoop)->getSeqNum();
 				writebuffer = (panel + writeLoop)->getBuffer();
 				std::cout<<"writePacket: buffer found to be sent: " << writebuffer<<" at i val: " << writeLoop << "\n";
-				send(socketfd, writebuffer, pSize + 8 + 5, 0);
+				write(socketfd, writebuffer, pSize + 8 + 5);
 				if (!send)
 				{
 					std::cout << "writePacket: Packet #" << writeID << " failed to send.\n";
@@ -122,6 +122,7 @@ void Client::writePacket(Panel *panel)
 		foundEOF = writeMyPkt(panel);
 	}
 }
+
 //handles shifting of window when expected pkt is ack'd - NOT A THREAD
 void Client::handleExpected(Panel *panel, int window_size){
 	//lock all panels - blocking any new change from threads
@@ -233,7 +234,7 @@ int Client::findAndFillEOF(Panel *panel) {
 	return foundEmpty;
 }
 //send packets to server
-void Client::sendPacket(const char *filename, char * buffer, Panel *panel){
+void Client::sendPacket(const char *filename, char * buffer, Panel *panel, int pack_size){
 	//call write to loop through window and check for pkts to send
 	//writePacket(buffer, panel);
 	std::thread wPkt([&](){ Client::writePacket(panel);});
@@ -245,8 +246,8 @@ void Client::sendPacket(const char *filename, char * buffer, Panel *panel){
 	int sn = seq_max;
 	int result;
 	//open file for reading
-	FILE *openedFile = fopen(filename, "r+");
-	if (openedFile == NULL)
+	FILE *tempFile = fopen(filename, "r+");
+	if (tempFile == NULL)
 	{
 		std::cout << "sendpacket: Error opening file to read. (Do you have r+ permissions for this file?)\n";
 		exit(2);
@@ -256,10 +257,22 @@ void Client::sendPacket(const char *filename, char * buffer, Panel *panel){
 	int packet_counter = 0;
 	//start ACK thread
 	//read information from file, pSize chars at a time
-	while ((result = fread(buffer, cSize, pSize, openedFile)) > 0)
+	fseek(tempFile, 0, SEEK_END);
+	int fileSize = ftell(tempFile);
+	fclose(tempFile);
+	FILE *openedFile = fopen(filename, "r+");
+	if (openedFile == NULL)
 	{
+		std::cout << "sendpacket: Error opening file to read. (Do you have r+ permissions for this file?)\n";
+		exit(2);
+	}
+	numbPcktsExpected = fileSize/pack_size;
+	int currentPacket = 0;
+	while ((result = fread(buffer, cSize, pSize, openedFile)) > 0)
+	{	
 		//CRC code
 		Checksum csum;
+		std::cout<<"Buffer to be crc'd: " << buffer << "\n";
 		std::string crc = csum.calculateCRC(std::string(buffer));
 		//construct id
 		std::string id = std::to_string(packet_counter);
@@ -340,7 +353,7 @@ void Client::startThreads(const char *filename, int pack_size, int windowSize, i
 	write(socketfd, (char *)pack_size_char_arr, 8);
 	//TO-DO:set as thread
 	//sendPacket(filename, pSize, cSize, window_size, sequence_max, buffer, panel, buf_size);
-	std::thread sPkt([&](){ Client::sendPacket(filename, buffer, panel);});
+	std::thread sPkt([&](){ Client::sendPacket(filename, buffer, panel, pack_size);});
 	sPkt.join();
 	//writePacket(thread);
 	//readAck(thread);

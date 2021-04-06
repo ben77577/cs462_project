@@ -4,6 +4,7 @@
 #include <numeric>
 #include <iomanip>
 #include "Checksum.hpp"
+#include <iostream>
  
 //Create a lookup table for the checksum
 std::array<std::uint_fast32_t, 256> Checksum::createLookupTable() noexcept{
@@ -40,6 +41,7 @@ std::uint_fast32_t Checksum::crc(InputIterator first, InputIterator last){
 
 //Get the checksum for the given string (return hex string)
 std::string Checksum::calculateCRC(std::string message){
+	std::cout<<"Inside crc buffer looks like: " << message << "\n";
 	auto const s = message;
 	std::stringstream stream;
 	stream << std::hex << Checksum::crc(s.begin(), s.end());

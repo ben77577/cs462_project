@@ -116,6 +116,7 @@ bool Server::readPackets(int newsockfd, const char* filename){
 		std::cout<<"id: " << id<<"\n";
 		//CRC code - run crc on server side
 		Checksum csum;
+		std::cout<<"String to be crc'd: " << std::string(buffer).substr(0, amtRead-(packetInfoSize+idSize));
 		std::string crc = csum.calculateCRC(std::string(buffer).substr(0, amtRead-(packetInfoSize+idSize)));
 		std::cout<<crc<<"\n";
 		//print packet information if appropriate

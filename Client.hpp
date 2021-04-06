@@ -23,11 +23,12 @@ class Client{
 		int buf_size;
 		int seq_max;
 		std::mutex windowLock;
+		int numbPcktsExpected;
 
 	public:
 		Client(std::string ip, std::string po, std::string pr_pa);
 		void start();
-		void sendPacket(const char *filename, char * buffer, Panel *panel);
+		void sendPacket(const char *filename, char * buffer, Panel *panel, int pack_size);
 		void writePacket(Panel *panel);
 		void readAck(Panel *panel);
 		const int getWindowSize(int windowSize);
