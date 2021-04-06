@@ -69,10 +69,12 @@ int Client::writeMyPkt(Panel *panel) {
 	std::lock_guard<std::mutex> window_lock(windowLock);
 	std::cout<<"writePacket: has panel locked\n";
 	for (int writeLoop = 0; writeLoop < window_size; writeLoop++){
-			time_t now;
-			std::cout<<"panel summary: \n";
-			(panel+writeLoop)->summary();
-			
+			time_t now;	
+			if ((panel)->isLast()) {
+				//EOF found in first panel, exit function
+				foundEOF = 1;
+				return foundEOF;
+			}		
 			if ((panel + writeLoop)->isEmpty() == 0 && ((panel + writeLoop)->isSent() == 0 || 
 												(time(&now) - (panel + writeLoop)->getTimeSent() > 500)) && !(panel+writeLoop)->isLast()){
 				std::cout<<"writePacket: Panel to be sent found - id: " << (panel+writeLoop)->getSeqNum()<<"\n";
@@ -105,10 +107,6 @@ int Client::writeMyPkt(Panel *panel) {
 					bzero(writebuffer, buf_size);
 					writeLoop = window_size;
 				}
-			}else if (writeLoop == 0 && (panel+writeLoop)->isLast()) {
-				//EOF found in first panel, exit function
-				foundEOF = 1;
-				writeLoop=window_size;
 			}
 		}
 		std::cout<<"writePacket: writeMyPkt should be losing guard\n";
@@ -141,6 +139,9 @@ void Client::handleExpected(Panel *panel, int window_size){
 			(panel+shift)->fillBuffer((panel+shift+1)->getBuffer());
 			(panel+shift)->setPktSize((panel+shift+1)->getPktSize());
 			(panel+shift)->setTimeSent((panel+shift+1)->getTimeSent());
+			if ((panel+shift+1)->isLast()) {
+				(panel+shift)->setAsLast();
+			}
 			if ((panel+shift+1)->isSent()){
 				(panel+shift)->markAsSent();
 			}
@@ -222,9 +223,8 @@ int Client::findAndFillEOF(Panel *panel) {
 	std::lock_guard<std::mutex> window_lock(windowLock);
 	std::cout<<"starting loop\n";
 	for (int i = 0; i < window_size; i++){
-				std::lock_guard<std::mutex> window_lock(windowLock);
-				std::cout<<"sendpacket: end of file is found, sendPacket has it locked\n";
 				if ((panel + i)->isEmpty()){
+					std::cout<<"sendPacket: Panel found - filling with EOF\n";
 					(panel+i)->setAsOccupied();
 					(panel+i)->setAsLast();
 					//exit while
