@@ -115,8 +115,8 @@ bool Server::readPackets(int newsockfd, const char* filename){
 	int amtRead;
 	int packet_counter = 0;
 	//read packets from client
-	while((amtRead = read(newsockfd, buffer, pack_size)) != 0){
-		std::cout<<"Buffer: " << buffer<<"\n";
+	while((amtRead = read(newsockfd, buffer, pack_size)) > 0){
+		amtRead = strlen(buffer);
 		//take client crc & id off buffer		
 		std::cout<<amtRead-packetInfoSize<<"\n";
 		std::string clientCrc = std::string(buffer).substr(amtRead-(packetInfoSize),packetInfoSize);
@@ -127,6 +127,8 @@ bool Server::readPackets(int newsockfd, const char* filename){
 		Checksum csum;
 		std::cout<<"String to be crc'd: " << std::string(buffer).substr(0, amtRead-(packetInfoSize+idSize));
 		std::string crc = csum.calculateCRC(std::string(buffer).substr(0, amtRead-(packetInfoSize+idSize)));
+		std::string leftPad = "00000000";
+		crc = leftPad.substr(0, 8 - crc.length()) + crc;
 		std::cout<<crc<<"\n";
 		//print packet information if appropriate
 		if(print_packets){

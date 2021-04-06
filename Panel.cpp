@@ -49,8 +49,8 @@ void Panel::markAsReceived() {
 char * Panel::getBuffer(){
     return panelBuffer;
 }
-void Panel::fillBuffer(char * givenBuffer) {
-    memcpy(panelBuffer, givenBuffer, 18);
+void Panel::fillBuffer(char * givenBuffer, int bufferSize) {
+    memcpy(panelBuffer, givenBuffer, bufferSize);
 };
 void Panel::setAsEmpty(){
     bzero(panelBuffer, sizeof(panelBufferSize));

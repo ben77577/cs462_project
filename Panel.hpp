@@ -27,7 +27,7 @@ class Panel{
         int isReceived();
         void markAsSent();
         void markAsReceived();
-        void fillBuffer(char * buffer);
+        void fillBuffer(char * buffer, int bufferSize);
         char* getBuffer();
         int tryLockPkt();
         void releasePkt();

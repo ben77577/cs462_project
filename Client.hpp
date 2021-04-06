@@ -28,7 +28,7 @@ class Client{
 	public:
 		Client(std::string ip, std::string po, std::string pr_pa);
 		void start();
-		void sendPacket(const char *filename, char * buffer, Panel *panel, int pack_size);
+		void sendPacket(const char *filename,Panel *panel, int pack_size);
 		void writePacket(Panel *panel);
 		void readAck(Panel *panel);
 		const int getWindowSize(int windowSize);

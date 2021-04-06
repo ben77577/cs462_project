@@ -136,7 +136,7 @@ void Client::handleExpected(Panel *panel, int window_size){
 			//shift panel back one
 			//TO-DO(maybe): make into its own function in PANEL::PANEL
 			(panel+shift)->setSeqNum((panel+shift+1)->getSeqNum());
-			(panel+shift)->fillBuffer((panel+shift+1)->getBuffer());
+			(panel+shift)->fillBuffer((panel+shift+1)->getBuffer(), buf_size);
 			(panel+shift)->setPktSize((panel+shift+1)->getPktSize());
 			(panel+shift)->setTimeSent((panel+shift+1)->getTimeSent());
 			if ((panel+shift+1)->isLast()) {
@@ -203,7 +203,7 @@ int Client::findAndFillBuffer(Panel *panel, char *buffer, int packet_counter, in
 			for (int i = 0; i < window_size; i++){
 				if ((panel + i)->isEmpty()){
 					std::cout<<"sendPacket: buffer to be filled: " << buffer << "\n";
-					(panel + i)->fillBuffer(buffer);
+					(panel + i)->fillBuffer(buffer, buf_size);
 					std::cout<<"sendPacket: setting sequence number of " << packet_counter<<"\n";
 					(panel + i)->setSeqNum(packet_counter);
 					(panel + i)->setAsOccupied();
@@ -236,15 +236,15 @@ int Client::findAndFillEOF(Panel *panel) {
 	return foundEmpty;
 }
 //send packets to server
-void Client::sendPacket(const char *filename, char * buffer, Panel *panel, int pack_size){
+void Client::sendPacket(const char *filename, Panel *panel, int pack_size){
 	//call write to loop through window and check for pkts to send
-	//writePacket(buffer, panel);
 	std::thread wPkt([&](){ Client::writePacket(panel);});
 	//call to read socket for acks and change appropriate panel in window - TO-DO: std::thread rPkt([&](){ Client::readAck(buffer, window_size, panel);});
-	//readAck(buffer, panel);
 	std::thread rPkt([&](){ Client::readAck(panel);});
 	
 	std::cout<<"sendpacket: past threads\n";
+	char * fillPacket = (char *)malloc(buf_size);
+	bzero(fillPacket, buf_size);
 	int sn = seq_max;
 	int result;
 	//open file for reading
@@ -272,33 +272,35 @@ void Client::sendPacket(const char *filename, char * buffer, Panel *panel, int p
 	int currentPacket = 0;
 	int foundEOF = 0;
 	bool lastPacket = 0;
-	while ((result = fread(buffer, cSize, pSize, openedFile)) > 0)
+	while ((result = fread(fillPacket, cSize, pSize, openedFile)) > 0)
 	{	
 		//CRC code
 		Checksum csum;
-		std::cout<<"Buffer to be crc'd: " << buffer << "\n";
-		
-		if(numbPcktsExpected == (currentPacket)){
-			buffer = const_cast<char*>((std::string(buffer).substr(0,result-1)).c_str());
-			if (strlen(buffer)==0) {
+		std::cout<<"Buffer to be crc'd: " << fillPacket << "\n";
+		/**if(numbPcktsExpected == (currentPacket)){
+			fillPacket = const_cast<char*>((std::string(fillPacket).substr(0,result-1)).c_str());
+			if (strlen(fillPacket)==0) {
+				std::cout<<"Last packet is empty, break\n";
 				break;
 			}
 			lastPacket = 1;
-		}
-		
-		std::string crc = csum.calculateCRC(std::string(buffer));
+		}**/
+		std::string crc = csum.calculateCRC(std::string(fillPacket));
+		std::string leftPad = "00000000";
+		crc = leftPad.substr(0, 8 - crc.length()) + crc;
 		//construct id
 		std::string id = std::to_string(packet_counter);
-		std::string leftPad = "00000";
+		leftPad = "00000";
 		id = leftPad.substr(0, 5 - id.length()) + id;
-		//write the packet to the server (ADD 8+5 TO RESULT IF ADDING CRC+ID) (and use this to add crc to end of buffer std::strcat(buffer, crc.c_str()))
-		std::strcat(std::strcat(buffer, id.c_str()), crc.c_str());
+		//write the packet to the server (ADD 8+5 TO RESULT IF ADDING CRC+ID) (and use this to add crc to end of fillPacket std::strcat(fillPacket, crc.c_str()))
+		std::strcat(std::strcat(fillPacket, id.c_str()), crc.c_str());
+		std::cout<<"fillPacket after stringify: " << fillPacket << "\n";
 		int emptyNotFound = 0;
 		//find an empty panel
 		//if found, then populate pkt with appropriate information
 		//if none, then pause and wait till there is one
 		while (!emptyNotFound){
-			emptyNotFound = findAndFillBuffer(panel, buffer, packet_counter, result);
+			emptyNotFound = findAndFillBuffer(panel, fillPacket, packet_counter, result);
 		}
 		std::cout<<"sendpacket: Made it out of emptyNotFound\n";
 		std::cout<<"sendpacket: packet_counter " << packet_counter<<"\n";
@@ -309,7 +311,7 @@ void Client::sendPacket(const char *filename, char * buffer, Panel *panel, int p
 			packet_counter++;
 		}
 		currentPacket++;
-		bzero(buffer, buf_size);
+		bzero(fillPacket, buf_size);
 		if (lastPacket) {
 			break;
 		}
@@ -333,13 +335,11 @@ uint64_t Client::milliNow() {
 }
 //Initializes global variables & begins sendPacket thread
 void Client::startThreads(const char *filename, int pack_size, int windowSize, int sequence_max){
-	std::cout<<"startThreads\n";
 	//initialize array(window)
 	Panel panel[windowSize];
 	//total size of CRC, sequence numbers, etc...
 	int packetInfoSize = 8;
 	int idSize = 5;
-	std::cout<<"About to set gvs\n";
 	//set global variables
 	seq_max = sequence_max;
 	window_size = windowSize;
@@ -350,7 +350,6 @@ void Client::startThreads(const char *filename, int pack_size, int windowSize, i
 	//char * buffer;
 	buf_size = sizeof(char) * (pack_size + packetInfoSize+idSize);
 	//set up buffer
-	std::cout<<"set gvs\n";
 	char * buffer =(char*)malloc(buf_size);
 	//char buffer[buf_size];
 	bzero(buffer, buf_size);
@@ -386,7 +385,7 @@ void Client::startThreads(const char *filename, int pack_size, int windowSize, i
 	std::cout<< startSend << "-"<<endSend << "=" << RTT<<"\n";
 	//TO-DO:set as thread
 	//sendPacket(filename, pSize, cSize, window_size, sequence_max, buffer, panel, buf_size);
-	std::thread sPkt([&](){ Client::sendPacket(filename, buffer, panel, pack_size);});
+	std::thread sPkt([&](){ Client::sendPacket(filename, panel, pack_size);});
 	sPkt.join();
 	//writePacket(thread);
 	//readAck(thread);
