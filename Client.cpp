@@ -8,14 +8,15 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <regex>
-#include "Client.hpp"
 #include <thread>
 #include <chrono>
 
+#include "Client.hpp"
+
 //constructor
-Client::Client(std::string ip, std::string po, std::string pr_pa)
+Client::Client(std::string ip, std::string po, std::string pr_pa, ErrorCreate* er)
 {
-	ip_address = ip;
+	ip_address = ip; 
 	port = po;
 	//set print_packets appropriatly
 	if (pr_pa.compare("y") == 0)
@@ -26,6 +27,8 @@ Client::Client(std::string ip, std::string po, std::string pr_pa)
 	{
 		print_packets = false;
 	}
+	errorObj = er;
+	//std::cout << (*errorObj).getPacketError(3) << "\n";	
 }
 
 //start the client
@@ -67,7 +70,7 @@ int Client::writeMyPkt(Panel *panel) {
 	}
 	int foundEOF = 0;
 	std::lock_guard<std::mutex> window_lock(windowLock);
-	std::cout<<"writePacket: has panel locked\n";
+	//std::cout<<"writePacket: has panel locked\n";
 	for (int writeLoop = 0; writeLoop < window_size; writeLoop++){
 			time_t now;	
 			if ((panel)->isLast()) {
@@ -75,13 +78,19 @@ int Client::writeMyPkt(Panel *panel) {
 				foundEOF = 1;
 				return foundEOF;
 			}		
-			if ((panel + writeLoop)->isEmpty() == 0 && ((panel + writeLoop)->isSent() == 0 || 
-												(time(&now) - (panel + writeLoop)->getTimeSent() > 500)) && !(panel+writeLoop)->isLast()){
+			if ((panel + writeLoop)->isEmpty() == 0 && ((panel + writeLoop)->isSent() == 0 || (time(&now) - (panel + writeLoop)->getTimeSent() > 3)) && !(panel+writeLoop)->isLast()){
 				std::cout<<"writePacket: Panel to be sent found - id: " << (panel+writeLoop)->getSeqNum()<<"\n";
 				int writeID = (panel + writeLoop)->getSeqNum();
 				writebuffer = (panel + writeLoop)->getBuffer();
 				std::cout<<"writePacket: buffer found to be sent: " << writebuffer<<" at i val: " << writeLoop << "\n";
-				write(socketfd, writebuffer, pSize + 8 + 5);
+				if(panel->getFail() == 0){
+					write(socketfd, writebuffer, pSize + 8 + 5);
+				}
+				else{
+					std::cout << "\nPACKET " << writeID << " DROPPED\n\n"; 
+					panel->setFail(0);
+				}
+				
 				if (!send)
 				{
 					std::cout << "writePacket: Packet #" << writeID << " failed to send.\n";
@@ -109,7 +118,7 @@ int Client::writeMyPkt(Panel *panel) {
 				}
 			}
 		}
-		std::cout<<"writePacket: writeMyPkt should be losing guard\n";
+		//std::cout<<"writePacket: writeMyPkt should be losing guard\n";
 	return foundEOF;
 }
 //thread to find unsent/timedout pkts and resend/send pkts appropriately - TO-DO: THREAD
@@ -199,7 +208,7 @@ void Client::readAck(Panel *panel){
 int Client::findAndFillBuffer(Panel *panel, char *buffer, int packet_counter, int result) {
 	int foundEmpty = 0;
 	std::lock_guard<std::mutex> window_lock(windowLock);
-	std::cout<<"sendpacket: has panel locked\n";
+	//std::cout<<"sendpacket: has panel locked\n";
 			for (int i = 0; i < window_size; i++){
 				if ((panel + i)->isEmpty()){
 					std::cout<<"sendPacket: buffer to be filled: " << buffer << "\n";
@@ -295,6 +304,23 @@ void Client::sendPacket(const char *filename, Panel *panel, int pack_size){
 		//write the packet to the server (ADD 8+5 TO RESULT IF ADDING CRC+ID) (and use this to add crc to end of fillPacket std::strcat(fillPacket, crc.c_str()))
 		std::strcat(std::strcat(fillPacket, id.c_str()), crc.c_str());
 		std::cout<<"fillPacket after stringify: " << fillPacket << "\n";
+		
+		
+		//Introduce errors if applicable
+		//check for damage packets
+		std::string introduceError = (*errorObj).getPacketError(currentPacket);
+		if(introduceError != "na" && introduceError == "da"){
+			//damage packet
+			fillPacket[0] = fillPacket[0]+1;
+			
+		}
+		//check for drop packets
+		std::string introduceError1 = (*errorObj).getPacketError(currentPacket-1);
+		if(introduceError1 != "na" && introduceError1 == "dr"){
+			//drop packet
+			panel->setFail(1);
+		}
+		
 		int emptyNotFound = 0;
 		//find an empty panel
 		//if found, then populate pkt with appropriate information
@@ -336,7 +362,7 @@ uint64_t Client::milliNow() {
 //Initializes global variables & begins sendPacket thread
 void Client::startThreads(const char *filename, int pack_size, int windowSize, int sequence_max){
 	//initialize array(window)
-	Panel panel[windowSize];
+	Panel panel[windowSize] = {};
 	//total size of CRC, sequence numbers, etc...
 	int packetInfoSize = 8;
 	int idSize = 5;
@@ -376,6 +402,7 @@ void Client::startThreads(const char *filename, int pack_size, int windowSize, i
 	uint64_t endSend;
 	//write packet size to server
 	write(socketfd, (char *)pack_size_char_arr, 8);
+	
 	bzero(buffer, buf_size);
 	read(socketfd, buffer, 8);
 	if (read>0) {

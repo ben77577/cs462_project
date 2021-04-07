@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include "Checksum.hpp"
+#include "ErrorCreate.hpp"
 
 class Server{
 	private:
@@ -17,8 +18,9 @@ class Server{
 		int clientfd;
 		struct sockaddr_in sockaddr;
 		bool print_packets;
+		ErrorCreate *errorObj;
 	public:
-		Server(std::string ip, std::string po, std::string pr_pa);
+		Server(std::string ip, std::string po, std::string pr_pa, ErrorCreate* er);
 		int start();
 		bool readPackets(int newsockfd, const char* filename);
 

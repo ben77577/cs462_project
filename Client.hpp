@@ -6,7 +6,9 @@
 #include <cstring>
 #include <iomanip>
 #include <unistd.h>
+
 #include "Checksum.hpp"
+#include "ErrorCreate.hpp"
 #include "Panel.hpp"
 
 
@@ -24,9 +26,10 @@ class Client{
 		int seq_max;
 		std::mutex windowLock;
 		int numbPcktsExpected;
+		ErrorCreate *errorObj;
 
 	public:
-		Client(std::string ip, std::string po, std::string pr_pa);
+		Client(std::string ip, std::string po, std::string pr_pa, ErrorCreate* er);
 		void start();
 		void sendPacket(const char *filename,Panel *panel, int pack_size);
 		void writePacket(Panel *panel);

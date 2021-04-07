@@ -19,6 +19,7 @@ Panel::Panel(){
     timeSent = 0; //epoch now-timeSent>=timeout -> resend pkt -> timeSent++;
     numberOfSent = 0;
     pktSize = 0;  
+	fail = 0;
 };
 //returns seqNum
 int Panel::getSeqNum() {
@@ -60,6 +61,7 @@ void Panel::setAsEmpty(){
     empty = 1;
     timeSent = 0;
     pktSize = 0;
+	fail = 0;
 }
 int Panel::isEmpty(){
     return empty;
@@ -89,6 +91,12 @@ void Panel::setAsLast() {
 }
 int Panel::isLast() {
     return fileDone;
+}
+void Panel::setFail(int failStatus){
+	fail = failStatus;
+}
+int Panel::getFail(){
+	return fail;
 }
 void Panel::summary() {
     std::cout<<"Summary for panel " <<seqNum<<"\n";

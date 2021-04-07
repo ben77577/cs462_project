@@ -7,8 +7,50 @@
 #include <iomanip>
 #include <unistd.h>
 
+//#include "ErrorCreate.hpp"
 #include "Client.hpp"
 #include "Server.hpp"
+
+
+
+ErrorCreate promptErrors(std::string client_server){
+	
+	std::string in_er;
+	std::cout << "Introduce Errors? (y/n): ";
+	std::cin >> in_er;
+
+	if(in_er == "n"){
+		ErrorCreate errorObj(std::string("none"));
+		return errorObj;
+	}
+	
+	if(client_server == "client"){
+		ErrorCreate errorObj(std::string("client"));
+		
+		std::string drop_packets_string;
+		std::cout << "Drop packets? (\"no\" or comma-serperated list): ";
+		std::cin >> drop_packets_string;
+		errorObj.setDropPackets(drop_packets_string);
+		
+		std::string damage_packets_string;
+		std::cout << "Damage packets? (\"no\" or comma-serperated list): ";
+		std::cin >> damage_packets_string;
+		errorObj.setDamagePackets(damage_packets_string);
+		
+		return errorObj;
+	}
+	else if(client_server == "server"){
+		ErrorCreate errorObj(std::string("server"));
+		
+		std::string lost_ack_string;
+		std::cout << "Lose Acks? (\"no\" or comma-serperated list): ";
+		std::cin >> lost_ack_string;
+		errorObj.setLoseAcks(lost_ack_string);
+		return errorObj;
+	}
+	ErrorCreate errorObj(std::string("none"));
+	return errorObj;
+}
 
 
 //main
@@ -35,13 +77,16 @@ int main(){
 		//get server-specific information from user
 		std::cout << "Port # ";
 		std::cin >> port_number;
+		
+		ErrorCreate errorObj = promptErrors("server");
+		
 		std::cout << "Save file to: ";
 		std::cin.ignore();
 		getline(std::cin, filename);
 
 		
 		//create Server object
-		Server server(ip_address, port_number, print_packets);
+		Server server(ip_address, port_number, print_packets, &errorObj);
 		//start the server (return connected client sockFd)
 		int clientsockfd = server.start();
 		//read packets from client
@@ -57,6 +102,8 @@ int main(){
 	}
 	//client
 	else if(client_server.compare("client") == 0){
+		std::string errors;
+		
 		std::cout<<"Creating client...\n";
 		//get client-specific information from user
 		std::cout << "Connect to IP address: ";
@@ -70,10 +117,14 @@ int main(){
 		std::cout << "Window size: ";
 		std::cin >> windowSize;
 		std::cout << "Sequence number range: ";
-		std:: cin >> sequence_max;
+		std::cin >> sequence_max;
 		
+		ErrorCreate errorObj = promptErrors("client");
+	
+		//std::cout << errorObj.getPacketError(8);	
+	
 		//create Client object
-		Client client(ip_address, port_number, print_packets);
+		Client client(ip_address, port_number, print_packets, &errorObj);
 		//start the client
 		client.start();
 		//send packets to the server

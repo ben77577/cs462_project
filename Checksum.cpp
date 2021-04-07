@@ -3,8 +3,9 @@
 #include <cstdint>
 #include <numeric>
 #include <iomanip>
-#include "Checksum.hpp"
 #include <iostream>
+
+#include "Checksum.hpp"
  
 //Create a lookup table for the checksum
 std::array<std::uint_fast32_t, 256> Checksum::createLookupTable() noexcept{

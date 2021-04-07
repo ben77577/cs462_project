@@ -1,10 +1,5 @@
-#ifndef _OBJECT_H
-#define _OBJECT_H
-
-#include <algorithm>
-#include <array>
-#include <cstdint>
-#include <numeric>
+#ifndef _Checksum_H
+#define _Checksum_H
 
 class Checksum{
 	private:

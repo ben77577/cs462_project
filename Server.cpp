@@ -6,11 +6,13 @@
 #include <cstring>
 #include <iomanip>
 #include <unistd.h>
+
 #include "Server.hpp"
 
 
+
 //constructor
-Server::Server(std::string ip, std::string po, std::string pr_pa){
+Server::Server(std::string ip, std::string po, std::string pr_pa, ErrorCreate* er){
 	ip_address = ip;
 	port = po;
 	if(pr_pa.compare("y") == 0){
@@ -19,6 +21,7 @@ Server::Server(std::string ip, std::string po, std::string pr_pa){
 	else{
 		print_packets = false;
 	}
+	errorObj = er;
 }
 		
 int Server::start(){
@@ -146,10 +149,10 @@ bool Server::readPackets(int newsockfd, const char* filename){
 		//test if the two crcs are equal
 		if(clientCrc == crc){
 			//equal
-			std::cout << "   - The CRCs are equal\n";
+			std::cout << "   - Checksum ok\n";
 		}
 		else{
-			std::cout << "   - The CRCs are NOT equal...\n";
+			std::cout << "   - Checksum failed\n";
 		}
 				
 		//write packet to file
@@ -162,7 +165,17 @@ bool Server::readPackets(int newsockfd, const char* filename){
 		bzero(buffer,pack_size);
 		std::cout<<"id recieved: " << id << "\n";
 		if (clientCrc == crc) {
-			send(newsockfd, std::strcat(buffer, id.c_str()), 8, 0);
+			//check for lose ack error before sending ack
+			//std::cout << "ACK ID::: "<<std::stoi(id)<<"\n";
+			std::string introduceError = (*errorObj).getPacketError(std::stoi(id));
+			if(introduceError == "la"){
+				std::cout << "\nLOSE ACK " << id << "\n";
+				//(*errorObj).erasePacketError(std::stoi(id));
+			}
+			else{
+				send(newsockfd, std::strcat(buffer, id.c_str()), 8, 0);
+			}
+			
 			bzero(buffer,pack_size);
 			if (!send) {
 				std::cout<<"Failure to send ACK for packet #" << id<<"\n";

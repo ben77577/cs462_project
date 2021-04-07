@@ -17,6 +17,7 @@ class Panel{
         int pktSize;
         int fileDone;
         int panelBufferSize;
+		int fail;
         //locks Panel for edits
         std::mutex mtxPktLock;
 	public:
@@ -42,4 +43,6 @@ class Panel{
         void setAsLast();
         void summary();
         void allocateBuffer(int buffer_size);
+		int getFail();
+		void setFail(int failStatus);
 };
