@@ -25,6 +25,7 @@ class Panel{
 	public:
         Panel();
 		void markRetransmit();
+		void markUnRetransmit();
         bool getRetransmit();
 		int getPackNum();
 		void setPackNum(int givenPackNum);

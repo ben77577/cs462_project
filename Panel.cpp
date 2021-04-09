@@ -35,6 +35,10 @@ void Panel::markRetransmit() {
     retransmit = true;
 };
 
+void Panel::markUnRetransmit() {
+    retransmit = false;
+};
+
 bool Panel::getRetransmit() {
     return retransmit;
 };
