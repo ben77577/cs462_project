@@ -27,6 +27,7 @@ class Client{
 		std::mutex windowLock;
 		int numbPcktsExpected;
 		ErrorCreate *errorObj;
+		bool foundEndFile;
 
 	public:
 		Client(std::string ip, std::string po, std::string pr_pa, ErrorCreate* er);

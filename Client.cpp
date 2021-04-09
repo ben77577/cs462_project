@@ -28,6 +28,7 @@ Client::Client(std::string ip, std::string po, std::string pr_pa, ErrorCreate* e
 		print_packets = false;
 	}
 	errorObj = er;
+	foundEndFile = false;
 	//std::cout << (*errorObj).getPacketError(3) << "\n";	
 }
 
@@ -71,50 +72,87 @@ int Client::writeMyPkt(Panel *panel) {
 	int foundEOF = 0;
 	std::lock_guard<std::mutex> window_lock(windowLock);
 	//std::cout<<"writePacket: has panel locked\n";
+	bool timedOut = false;
+	
 	for (int writeLoop = 0; writeLoop < window_size; writeLoop++){
 			time_t now;	
+			
+			//if the panel is the last
 			if ((panel)->isLast()) {
 				//EOF found in first panel, exit function
 				foundEOF = 1;
+				foundEndFile = true;
 				return foundEOF;
 			}		
-			if ((panel + writeLoop)->isEmpty() == 0 && ((panel + writeLoop)->isSent() == 0 || (time(&now) - (panel + writeLoop)->getTimeSent() > 3)) && !(panel+writeLoop)->isLast()){
-				std::cout<<"writePacket: Panel to be sent found - id: " << (panel+writeLoop)->getSeqNum()<<"\n";
+			
+			
+			//is sent && didn't receive an ack && timed out
+			if((panel->isSent() == 1) && (panel->isReceived() == 0) && (time(&now) - panel->getTimeSent() > 3)){
+				timedOut = true;
+			}
+			else{
+				timedOut = false;
+			}
+			
+			//not empty && (not sent || timed-out) && not last
+			if ((panel + writeLoop)->isEmpty() == 0 && ((panel + writeLoop)->isSent() == 0 || timedOut) && !(panel+writeLoop)->isLast()){
+				//std::cout << "panel " << writeLoop << " isReceived? " << ((panel + writeLoop)->isReceived()) << "\n";
+				//std::cout<<"writePacket: Panel to be sent found - id: " << (panel+writeLoop)->getSeqNum()<<"\n";
 				int writeID = (panel + writeLoop)->getSeqNum();
+				
 				writebuffer = (panel + writeLoop)->getBuffer();
-				std::cout<<"writePacket: buffer found to be sent: " << writebuffer<<" at i val: " << writeLoop << "\n";
+				//std::cout<<"writePacket: buffer found to be sent: " << writebuffer<<" at i val: " << writeLoop << "\n";
+
+				char buff[pSize + 13];
+				strcpy(buff,writebuffer);
+
+				//Introduce errors if applicable
+				std::string introduceError = (*errorObj).getPacketError(writeID);
+				if(introduceError != "na"){
+					if(introduceError == "da"){
+						//damage packet
+						buff[0] = buff[0]+1;
+						std::cout << "\nDAMAGE PACKET\n";
+					}
+					else if(introduceError == "dr"){
+						//drop packet
+						panel->setFail(1);
+					}
+				}
+				
+				
 				if(panel->getFail() == 0){
-					write(socketfd, writebuffer, pSize + 8 + 5);
+					write(socketfd, buff, pSize + 13);
 				}
 				else{
 					std::cout << "\nPACKET " << writeID << " DROPPED\n\n"; 
 					panel->setFail(0);
 				}
 				
-				if (!send)
-				{
+				
+				if (!send){
 					std::cout << "writePacket: Packet #" << writeID << " failed to send.\n";
 				}
-				else
-				{
+				else{
 					(panel + writeLoop)->markAsSent();
 					//print the packet if appropriate
-					if (print_packets)
-					{
-						bool dots = true;
-						std::cout << std::dec;
-						std::cout << "writePacket: Sent packet #" << writeID << " - ";
-						for (int loop = 0; loop < buf_size + 5; loop++)
-						{
-							std::cout << writebuffer[loop];
-						}
-						std::cout << "\n";
+					if (print_packets){
+						std::cout << "\nwritePacket: Sent packet #" << writeID << " - " << writebuffer;
 					}
 					time_t sentTime;
 					time(&sentTime);
+					
 					(panel + writeLoop)->setTimeSent(sentTime);
-					bzero(writebuffer, buf_size);
 					writeLoop = window_size;
+
+					if(timedOut){
+						//set foundEOF to 1 so it doesn't resent subsequent packets
+						std::cout << "\nRESENT OFF TIMEOUT\n";
+						return 1;
+					}
+					else{
+						return 0;
+					}
 				}
 			}
 		}
@@ -141,7 +179,7 @@ void Client::handleExpected(Panel *panel, int window_size){
 		shift = 0;
 		//loop until found the end of window or next panel is empty
 		while (shift < window_size - 2 && !(panel + shift + 1)->isEmpty()){
-			std::cout<<"readAck: Shifting panels at indeces " << shift << " and " << shift+1<< "\n";
+			//std::cout<<"readAck: Shifting panels at indeces " << shift << " and " << shift+1<< "\n";
 			//shift panel back one
 			//TO-DO(maybe): make into its own function in PANEL::PANEL
 			(panel+shift)->setSeqNum((panel+shift+1)->getSeqNum());
@@ -187,10 +225,10 @@ void Client::readAck(Panel *panel){
 		}
 		else{
 			std::string ack = std::string(readBuffer);
-			std::cout << "readAck: Ack #" << ack << " received \n";
+			//std::cout << "readAck: Ack #" << ack << " received \n";
 			int ackComp = std::stoi(ack);
 			std::lock_guard<std::mutex> window_lock(windowLock);
-			std::cout<<"readAck: has panel locked\n";
+			//std::cout<<"readAck: has panel locked\n";
 			for (int i = 0; i < window_size; i++){
 				if ((panel + i)->getSeqNum() == ackComp){
 					std::cout<<"readAck: Ack'ing panel " << (panel+i)->getSeqNum()<<"at value i: " << i << "\n";
@@ -211,9 +249,9 @@ int Client::findAndFillBuffer(Panel *panel, char *buffer, int packet_counter, in
 	//std::cout<<"sendpacket: has panel locked\n";
 			for (int i = 0; i < window_size; i++){
 				if ((panel + i)->isEmpty()){
-					std::cout<<"sendPacket: buffer to be filled: " << buffer << "\n";
+					//std::cout<<"sendPacket: buffer to be filled: " << buffer << "\n";
 					(panel + i)->fillBuffer(buffer, buf_size);
-					std::cout<<"sendPacket: setting sequence number of " << packet_counter<<"\n";
+					//std::cout<<"sendPacket: setting sequence number of " << packet_counter<<"\n";
 					(panel + i)->setSeqNum(packet_counter);
 					(panel + i)->setAsOccupied();
 					(panel + i)->setPktSize(result);
@@ -227,10 +265,10 @@ int Client::findAndFillBuffer(Panel *panel, char *buffer, int packet_counter, in
 }
 //find and populate empty panel with EOF information
 int Client::findAndFillEOF(Panel *panel) {
-	std::cout<<"findAndFillEOF\n";
+	//std::cout<<"findAndFillEOF\n";
 	int foundEmpty = 0;
 	std::lock_guard<std::mutex> window_lock(windowLock);
-	std::cout<<"starting loop\n";
+	
 	for (int i = 0; i < window_size; i++){
 				if ((panel + i)->isEmpty()){
 					std::cout<<"sendPacket: Panel found - filling with EOF\n";
@@ -251,7 +289,7 @@ void Client::sendPacket(const char *filename, Panel *panel, int pack_size){
 	//call to read socket for acks and change appropriate panel in window - TO-DO: std::thread rPkt([&](){ Client::readAck(buffer, window_size, panel);});
 	std::thread rPkt([&](){ Client::readAck(panel);});
 	
-	std::cout<<"sendpacket: past threads\n";
+	//std::cout<<"sendpacket: past threads\n";
 	char * fillPacket = (char *)malloc(buf_size);
 	bzero(fillPacket, buf_size);
 	int sn = seq_max;
@@ -285,15 +323,6 @@ void Client::sendPacket(const char *filename, Panel *panel, int pack_size){
 	{	
 		//CRC code
 		Checksum csum;
-		std::cout<<"Buffer to be crc'd: " << fillPacket << "\n";
-		/**if(numbPcktsExpected == (currentPacket)){
-			fillPacket = const_cast<char*>((std::string(fillPacket).substr(0,result-1)).c_str());
-			if (strlen(fillPacket)==0) {
-				std::cout<<"Last packet is empty, break\n";
-				break;
-			}
-			lastPacket = 1;
-		}**/
 		std::string crc = csum.calculateCRC(std::string(fillPacket));
 		std::string leftPad = "00000000";
 		crc = leftPad.substr(0, 8 - crc.length()) + crc;
@@ -301,25 +330,8 @@ void Client::sendPacket(const char *filename, Panel *panel, int pack_size){
 		std::string id = std::to_string(packet_counter);
 		leftPad = "00000";
 		id = leftPad.substr(0, 5 - id.length()) + id;
-		//write the packet to the server (ADD 8+5 TO RESULT IF ADDING CRC+ID) (and use this to add crc to end of fillPacket std::strcat(fillPacket, crc.c_str()))
+		
 		std::strcat(std::strcat(fillPacket, id.c_str()), crc.c_str());
-		std::cout<<"fillPacket after stringify: " << fillPacket << "\n";
-		
-		
-		//Introduce errors if applicable
-		//check for damage packets
-		std::string introduceError = (*errorObj).getPacketError(currentPacket);
-		if(introduceError != "na" && introduceError == "da"){
-			//damage packet
-			fillPacket[0] = fillPacket[0]+1;
-			
-		}
-		//check for drop packets
-		std::string introduceError1 = (*errorObj).getPacketError(currentPacket-1);
-		if(introduceError1 != "na" && introduceError1 == "dr"){
-			//drop packet
-			panel->setFail(1);
-		}
 		
 		int emptyNotFound = 0;
 		//find an empty panel
@@ -328,9 +340,9 @@ void Client::sendPacket(const char *filename, Panel *panel, int pack_size){
 		while (!emptyNotFound){
 			emptyNotFound = findAndFillBuffer(panel, fillPacket, packet_counter, result);
 		}
-		std::cout<<"sendpacket: Made it out of emptyNotFound\n";
-		std::cout<<"sendpacket: packet_counter " << packet_counter<<"\n";
-		std::cout<<"sendpacket: seq_max" << seq_max <<"\n";
+		//std::cout<<"sendpacket: Made it out of emptyNotFound\n";
+		//std::cout<<"sendpacket: packet_counter " << packet_counter<<"\n";
+		//std::cout<<"sendpacket: seq_max" << seq_max <<"\n";
 		if (packet_counter == seq_max){
 			packet_counter = 0;
 		}else{
@@ -343,7 +355,7 @@ void Client::sendPacket(const char *filename, Panel *panel, int pack_size){
 		}
 	}
 	int emptyNotFound = 0;
-	std::cout<<"Attempting to add EOF packet\n";
+	//std::cout<<"Attempting to add EOF packet\n";
 	while (!emptyNotFound){
 		emptyNotFound = findAndFillEOF(panel);
 	}
@@ -386,7 +398,7 @@ void Client::startThreads(const char *filename, int pack_size, int windowSize, i
 		exit(2);
 	}
 	for (int initLoop = 0; initLoop<windowSize; initLoop++) {
-		std::cout<<"buffer size given to panel: " <<  buf_size << "\n";
+		//std::cout<<"buffer size given to panel: " <<  buf_size << "\n";
 		(panel+initLoop)->allocateBuffer(buf_size);
 	}
 	//set up pack_size to send (ADD 8 TO PACK_SIZE IF ADDING CRC)
@@ -409,7 +421,7 @@ void Client::startThreads(const char *filename, int pack_size, int windowSize, i
 		endSend = milliNow();
 	}
 	uint64_t RTT = startSend-endSend;
-	std::cout<< startSend << "-"<<endSend << "=" << RTT<<"\n";
+	//std::cout<< startSend << "-"<<endSend << "=" << RTT<<"\n";
 	//TO-DO:set as thread
 	//sendPacket(filename, pSize, cSize, window_size, sequence_max, buffer, panel, buf_size);
 	std::thread sPkt([&](){ Client::sendPacket(filename, panel, pack_size);});
