@@ -76,18 +76,18 @@ int Client::writeMyPkt(Panel *panel) {
 	
 	for (int writeLoop = 0; writeLoop < window_size; writeLoop++){
 			time_t now;	
-			
 			//if the panel is the last
 			if ((panel)->isLast()) {
 				//EOF found in first panel, exit function
 				foundEOF = 1;
 				foundEndFile = true;
+				std::cout<<"writePkt: EOF found\n";
 				return foundEOF;
 			}		
 			
 			
 			//is sent && didn't receive an ack && timed out
-			if((panel->isSent() == 1) && (panel->isReceived() == 0) && (time(&now) - panel->getTimeSent() > 3)){
+			if(((panel+writeLoop)->isSent() == 1 && (panel+writeLoop)->isReceived() == 0) && (time(&now) - (panel+writeLoop)->getTimeSent() > 3)){
 				timedOut = true;
 			}
 			else{
@@ -95,7 +95,7 @@ int Client::writeMyPkt(Panel *panel) {
 			}
 			
 			//not empty && (not sent || timed-out) && not last
-			if ((panel + writeLoop)->isEmpty() == 0 && ((panel + writeLoop)->isSent() == 0 || timedOut) && !(panel+writeLoop)->isLast()){
+			if ((panel + writeLoop)->isEmpty() == 0 && ((panel + writeLoop)->isSent() == 0 || timedOut)){
 				//std::cout << "panel " << writeLoop << " isReceived? " << ((panel + writeLoop)->isReceived()) << "\n";
 				//std::cout<<"writePacket: Panel to be sent found - id: " << (panel+writeLoop)->getSeqNum()<<"\n";
 				int writeID = (panel + writeLoop)->getSeqNum();
@@ -105,6 +105,9 @@ int Client::writeMyPkt(Panel *panel) {
 
 				char buff[pSize + 13];
 				strcpy(buff,writebuffer);
+				if(buff[0] == '\0') {
+					break;
+				}
 
 				//Introduce errors if applicable
 				std::string introduceError = (*errorObj).getPacketError(writeID);
@@ -122,37 +125,34 @@ int Client::writeMyPkt(Panel *panel) {
 				
 				
 				if(panel->getFail() == 0){
-					write(socketfd, buff, pSize + 13);
+					send(socketfd, buff, pSize + 13, 0);
+					if (!send){
+					std::cout << "writePacket: Packet #" << writeID << " failed to send.\n";
+					}else{
+						(panel + writeLoop)->markAsSent();
+						//print the packet if appropriate
+						if (print_packets){
+							std::cout << "\nwritePacket: Sent packet #" << writeID << " - " << writebuffer;
+						}
+						time_t sentTime;
+						time(&sentTime);
+						
+						(panel + writeLoop)->setTimeSent(sentTime);
+						writeLoop = window_size;
+
+						if(timedOut){
+							//set foundEOF to 1 so it doesn't resent subsequent packets
+							std::cout << "\nRESENT OFF TIMEOUT\n";
+							writeLoop = window_size;
+						}
+					//	else{
+					//		return 0;
+					//	}
+					}
 				}
 				else{
 					std::cout << "\nPACKET " << writeID << " DROPPED\n\n"; 
 					panel->setFail(0);
-				}
-				
-				
-				if (!send){
-					std::cout << "writePacket: Packet #" << writeID << " failed to send.\n";
-				}
-				else{
-					(panel + writeLoop)->markAsSent();
-					//print the packet if appropriate
-					if (print_packets){
-						std::cout << "\nwritePacket: Sent packet #" << writeID << " - " << writebuffer;
-					}
-					time_t sentTime;
-					time(&sentTime);
-					
-					(panel + writeLoop)->setTimeSent(sentTime);
-					writeLoop = window_size;
-
-					if(timedOut){
-						//set foundEOF to 1 so it doesn't resent subsequent packets
-						std::cout << "\nRESENT OFF TIMEOUT\n";
-						return 1;
-					}
-					else{
-						return 0;
-					}
 				}
 			}
 		}
@@ -249,7 +249,7 @@ int Client::findAndFillBuffer(Panel *panel, char *buffer, int packet_counter, in
 	//std::cout<<"sendpacket: has panel locked\n";
 			for (int i = 0; i < window_size; i++){
 				if ((panel + i)->isEmpty()){
-					//std::cout<<"sendPacket: buffer to be filled: " << buffer << "\n";
+					std::cout<<"sendPacket: buffer to be filled: " << buffer << "\n";
 					(panel + i)->fillBuffer(buffer, buf_size);
 					//std::cout<<"sendPacket: setting sequence number of " << packet_counter<<"\n";
 					(panel + i)->setSeqNum(packet_counter);

@@ -42,7 +42,7 @@ void Panel::markAsSent() {
 };
 // marks pkt as ACK'd
 void Panel::markAsReceived() {
-    if(receivedAck = 0) {
+    if(receivedAck == 0) {
         receivedAck=1;
     }
     //releasePkt();
@@ -100,14 +100,14 @@ int Panel::getFail(){
 }
 void Panel::summary() {
     std::cout<<"Summary for panel " <<seqNum<<"\n";
-    std::cout<<"seqNum"<<seqNum
-        <<"sentPkt = "<<sentPkt<<"\n"
-        <<"receivedAck = "<<receivedAck
-        <<"timeSent = "<<timeSent<<"\n"
-        <<"numberOfSent = "<<numberOfSent
-        <<"empty = "<<empty
-        <<"pktSiz = "<<pktSize<<"\n"
-        <<"fileDone = "<<fileDone<<"\n\n";
+    std::cout<<"seqNum = "<<seqNum
+        <<" sentPkt = "<<sentPkt<<"\n"
+        <<" receivedAck = "<<receivedAck
+        <<" timeSent = "<<timeSent<<"\n"
+        <<" numberOfSent = "<<numberOfSent
+        <<" empty = "<<empty
+        <<" pktSiz = "<<pktSize<<"\n"
+        <<" fileDone = "<<fileDone<<"\n\n";
         if(empty!=1) {
             std::cout<<panelBuffer<<"\n";
         }
