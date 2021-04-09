@@ -19,10 +19,13 @@ class Panel{
         int panelBufferSize;
 		int fail;
 		int packetNumber;
+		bool retransmit;
         //locks Panel for edits
         std::mutex mtxPktLock;
 	public:
         Panel();
+		void markRetransmit();
+        bool getRetransmit();
 		int getPackNum();
 		void setPackNum(int givenPackNum);
 		int getSeqNum();

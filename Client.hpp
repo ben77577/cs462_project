@@ -28,9 +28,10 @@ class Client{
 		int numbPcktsExpected;
 		ErrorCreate *errorObj;
 		bool foundEndFile;
+		bool gbn;
 
 	public:
-		Client(std::string ip, std::string po, std::string pr_pa, ErrorCreate* er);
+		Client(std::string ip, std::string po, std::string pr_pa, std::string protocolType, ErrorCreate* er);
 		void start();
 		void sendPacket(const char *filename,Panel *panel, int pack_size);
 		void writePacket(Panel *panel);

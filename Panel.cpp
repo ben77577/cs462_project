@@ -21,6 +21,7 @@ Panel::Panel(){
     pktSize = 0;  
 	fail = 0;
 	packetNumber = 0;
+	retransmit = false;
 };
 
 int Panel::getPackNum() {
@@ -29,6 +30,15 @@ int Panel::getPackNum() {
 void Panel::setPackNum(int givenPackNum) {
     packetNumber = givenPackNum;
     };
+
+void Panel::markRetransmit() {
+    retransmit = true;
+};
+
+bool Panel::getRetransmit() {
+    return retransmit;
+};
+
 
 //returns seqNum
 int Panel::getSeqNum() {

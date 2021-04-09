@@ -14,7 +14,7 @@
 #include "Client.hpp"
 
 //constructor
-Client::Client(std::string ip, std::string po, std::string pr_pa, ErrorCreate* er)
+Client::Client(std::string ip, std::string po, std::string pr_pa, std::string protocolType, ErrorCreate* er)
 {
 	ip_address = ip; 
 	port = po;
@@ -29,6 +29,14 @@ Client::Client(std::string ip, std::string po, std::string pr_pa, ErrorCreate* e
 	}
 	errorObj = er;
 	foundEndFile = false;
+	
+	if(protocolType.compare("gbn") == 0){
+		gbn = true;
+	}
+	else{
+		gbn = false;
+	}
+	
 	//std::cout << (*errorObj).getPacketError(3) << "\n";	
 }
 
@@ -91,6 +99,14 @@ int Client::writeMyPkt(Panel *panel) {
 		if(((panel+writeLoop)->isSent() == 1 && (panel+writeLoop)->isReceived() == 0) && (time(&now) - (panel+writeLoop)->getTimeSent() > 1)){
 			timedOut = true;
 			std::cout << "\nPacket #" << (panel+writeLoop)->getPackNum() << " *****TIMED OUT*****";
+			if(gbn){
+				//clear out
+				for(int loop = 0; loop < window_size && !(panel+loop)->isLast(); loop++){
+					(panel+loop)->markAsNotSent();
+					(panel+loop)->markAsNotReceived();
+					(panel+loop)->markRetransmit();
+				}
+			}
 		}
 		else{
 			timedOut = false;
@@ -139,7 +155,7 @@ int Client::writeMyPkt(Panel *panel) {
 				//print the packet if appropriate
 				if (print_packets){
 					//std::cout << "\nPacket #" << writeID << " - " << writebuffer << "\n";
-					if(timedOut){
+					if(timedOut || (panel + writeLoop)->getRetransmit()){
 						std::cout << "\nPacket #" << writeID << " Re-transmitted";
 					}
 					else{
