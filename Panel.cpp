@@ -20,7 +20,16 @@ Panel::Panel(){
     numberOfSent = 0;
     pktSize = 0;  
 	fail = 0;
+	packetNumber = 0;
 };
+
+int Panel::getPackNum() {
+    return packetNumber;
+    };
+void Panel::setPackNum(int givenPackNum) {
+    packetNumber = givenPackNum;
+    };
+
 //returns seqNum
 int Panel::getSeqNum() {
     return seqNum;
@@ -35,18 +44,26 @@ int Panel::isSent() {
 //returns if ACK'd
 int Panel::isReceived() {
     return receivedAck;
-    };
+};
+
 // mark pkt as sent to server
 void Panel::markAsSent() {
     sentPkt=1;
 };
+
 // marks pkt as ACK'd
 void Panel::markAsReceived() {
-    if(receivedAck == 0) {
-        receivedAck=1;
-    }
-    //releasePkt();
+	receivedAck = 1;
 };
+
+void Panel::markAsNotSent(){
+	sentPkt = 0;
+}
+
+void Panel::markAsNotReceived(){
+	receivedAck = 0;
+}
+
 char * Panel::getBuffer(){
     return panelBuffer;
 }

@@ -18,16 +18,21 @@ class Panel{
         int fileDone;
         int panelBufferSize;
 		int fail;
+		int packetNumber;
         //locks Panel for edits
         std::mutex mtxPktLock;
 	public:
         Panel();
+		int getPackNum();
+		void setPackNum(int givenPackNum);
 		int getSeqNum();
         void setSeqNum(int givenSeqNum);
         int isSent();
         int isReceived();
         void markAsSent();
         void markAsReceived();
+		void markAsNotSent();
+        void markAsNotReceived();
         void fillBuffer(char * buffer, int bufferSize);
         char* getBuffer();
         int tryLockPkt();

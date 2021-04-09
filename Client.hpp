@@ -39,7 +39,7 @@ class Client{
 		void handleExpected(Panel *panel, int window_size);
 		void startThreads(const char *filename, int pack_size, int windowSize, int sequence_max);
 		int writeMyPkt(Panel *panel);
-		int findAndFillBuffer(Panel *panel, char *buffer, int packet_counter, int result);
+		int findAndFillBuffer(Panel *panel, char *buffer, int packet_counter, int packet_number, int result);
 		int findAndFillEOF(Panel *panel);
 		uint64_t milliNow();
 };
