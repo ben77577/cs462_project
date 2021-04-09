@@ -150,16 +150,14 @@ bool Server::readPackets(int newsockfd, const char* filename){
 		if(clientCrc == crc){
 			//equal
 			std::cout << "   - Checksum ok\n";
+			//write packet to file
+			size_t cSize = sizeof(char);
+			size_t writeSize = amtRead - packetInfoSize - idSize;
+			fwrite(buffer,cSize, writeSize,openedFile);
 		}
 		else{
 			std::cout << "   - Checksum failed\n";
-		}
-				
-		//write packet to file
-		size_t cSize = sizeof(char);
-		size_t writeSize = amtRead - packetInfoSize - idSize;
-		fwrite(buffer,cSize, writeSize,openedFile);
-				
+		}				
 		//increment counter and clear buffer
 		packet_counter++;
 		bzero(buffer,pack_size);

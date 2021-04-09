@@ -106,9 +106,10 @@ int Client::writeMyPkt(Panel *panel) {
 				char buff[pSize + 13];
 				strcpy(buff,writebuffer);
 				if(buff[0] == '\0') {
-					break;
+					std::cout<<"buff[0]=='0'\n";
+					return 1;
 				}
-
+				std::cout<<buff<<"\n";
 				//Introduce errors if applicable
 				std::string introduceError = (*errorObj).getPacketError(writeID);
 				if(introduceError != "na"){
@@ -176,10 +177,11 @@ void Client::handleExpected(Panel *panel, int window_size){
 	//loop until the first in window is no longer ack'd
 	int expectedReceived = 1;
 	while (expectedReceived){
+		(panel)->summary();
 		expectedReceived = 0;
 		shift = 0;
 		//loop until found the end of window or next panel is empty
-		while (shift < window_size - 2 && !(panel + shift + 1)->isEmpty()){
+		while (shift < window_size - 1 && !(panel + shift + 1)->isEmpty()){
 			//std::cout<<"readAck: Shifting panels at indeces " << shift << " and " << shift+1<< "\n";
 			//shift panel back one
 			//TO-DO(maybe): make into its own function in PANEL::PANEL
@@ -322,6 +324,7 @@ void Client::sendPacket(const char *filename, Panel *panel, int pack_size){
 	bool lastPacket = 0;
 	while ((result = fread(fillPacket, cSize, pSize, openedFile)) > 0)
 	{	
+		std::cout<<result<<" - result \n";
 		//CRC code
 		Checksum csum;
 		std::string crc = csum.calculateCRC(std::string(fillPacket));
@@ -351,9 +354,6 @@ void Client::sendPacket(const char *filename, Panel *panel, int pack_size){
 		}
 		currentPacket++;
 		bzero(fillPacket, buf_size);
-		if (lastPacket) {
-			break;
-		}
 	}
 	int emptyNotFound = 0;
 	//std::cout<<"Attempting to add EOF packet\n";
@@ -421,7 +421,7 @@ void Client::startThreads(const char *filename, int pack_size, int windowSize, i
 	if (read>0) {
 		endSend = milliNow();
 	}
-	uint64_t RTT = startSend-endSend;
+	uint64_t RTT = endSend-startSend;
 	//std::cout<< startSend << "-"<<endSend << "=" << RTT<<"\n";
 	//TO-DO:set as thread
 	//sendPacket(filename, pSize, cSize, window_size, sequence_max, buffer, panel, buf_size);
