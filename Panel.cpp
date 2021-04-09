@@ -42,7 +42,7 @@ void Panel::markAsSent() {
 };
 // marks pkt as ACK'd
 void Panel::markAsReceived() {
-    if(receivedAck = 0) {
+    if(receivedAck == 0) {
         receivedAck=1;
     }
     //releasePkt();
