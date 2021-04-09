@@ -140,14 +140,14 @@ int Client::writeMyPkt(Panel *panel) {
 						(panel + writeLoop)->setTimeSent(sentTime);
 						writeLoop = window_size;
 
-						if(timedOut){
+						/**if(timedOut){
 							//set foundEOF to 1 so it doesn't resent subsequent packets
 							std::cout << "\nRESENT OFF TIMEOUT\n";
 							writeLoop = window_size;
 						}
-					//	else{
-					//		return 0;
-					//	}
+						else{
+							return 0;
+						}**/
 					}
 				}
 				else{
@@ -166,6 +166,7 @@ void Client::writePacket(Panel *panel)
 	while(!foundEOF) {
 		foundEOF = writeMyPkt(panel);
 	}
+	std::cout << "\nFOUND EOF\n";
 }
 
 //handles shifting of window when expected pkt is ack'd - NOT A THREAD
