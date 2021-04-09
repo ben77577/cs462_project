@@ -75,7 +75,7 @@ int Client::writeMyPkt(Panel *panel) {
 	bool timedOut = false;
 	
 	for (int writeLoop = 0; writeLoop < window_size; writeLoop++){
-			time_t now;	
+		time_t now;
 			//if the panel is the last
 			if ((panel)->isLast()) {
 				//EOF found in first panel, exit function
@@ -85,7 +85,9 @@ int Client::writeMyPkt(Panel *panel) {
 				return foundEOF;
 			}		
 			
-			
+			//uint64_t pktRTTInt;
+			//std::istringstream convertRTT((panel+writeLoop)->getTimeSent());
+			//convertRTT >> pktRTTInt;
 			//is sent && didn't receive an ack && timed out
 			if(((panel+writeLoop)->isSent() == 1 && (panel+writeLoop)->isReceived() == 0) && (time(&now) - (panel+writeLoop)->getTimeSent() > 3)){
 				timedOut = true;
@@ -105,9 +107,9 @@ int Client::writeMyPkt(Panel *panel) {
 
 				char buff[pSize + 13];
 				strcpy(buff,writebuffer);
-				if(buff[0] == '\0') {
-					std::cout<<"buff[0]=='0'\n";
-					return 1;
+				//TEMP - DELETE
+				if (buff[0]=='\0'){
+					break;
 				}
 				std::cout<<buff<<"\n";
 				//Introduce errors if applicable
@@ -137,7 +139,6 @@ int Client::writeMyPkt(Panel *panel) {
 						}
 						time_t sentTime;
 						time(&sentTime);
-						
 						(panel + writeLoop)->setTimeSent(sentTime);
 						writeLoop = window_size;
 
@@ -176,12 +177,11 @@ void Client::handleExpected(Panel *panel, int window_size){
 	int shift = 0;
 	//loop until the first in window is no longer ack'd
 	int expectedReceived = 1;
+	int shiftToEmpty = 1;
 	while (expectedReceived){
-		(panel)->summary();
-		expectedReceived = 0;
 		shift = 0;
 		//loop until found the end of window or next panel is empty
-		while (shift < window_size - 1 && !(panel + shift + 1)->isEmpty()){
+		while (shift < window_size - shiftToEmpty && !(panel + shift + 1)->isEmpty()){
 			//std::cout<<"readAck: Shifting panels at indeces " << shift << " and " << shift+1<< "\n";
 			//shift panel back one
 			//TO-DO(maybe): make into its own function in PANEL::PANEL
@@ -194,10 +194,10 @@ void Client::handleExpected(Panel *panel, int window_size){
 			}
 			if ((panel+shift+1)->isSent()){
 				(panel+shift)->markAsSent();
-			}
+			}else{(panel+shift)->markAsUnsent();}
 			if ((panel+shift+1)->isReceived()){
 				(panel+shift)->markAsReceived();
-			}
+			}else {(panel+shift)->markNotReceived();}
 			shift++;
 		}
 		while(shift<window_size) {
@@ -207,6 +207,9 @@ void Client::handleExpected(Panel *panel, int window_size){
 		//reset loop variable if necessary
 		if ((panel)->isReceived()){
 			expectedReceived = 1;
+			shiftToEmpty++;
+		}else if (!(panel)->isReceived() || (panel)->isLast()){
+			expectedReceived = 0;
 		}
 	}
 }
@@ -230,6 +233,7 @@ void Client::readAck(Panel *panel){
 			std::string ack = std::string(readBuffer);
 			//std::cout << "readAck: Ack #" << ack << " received \n";
 			int ackComp = std::stoi(ack);
+			std::cout<<"ACK found: " << ack<<"\n";
 			std::lock_guard<std::mutex> window_lock(windowLock);
 			//std::cout<<"readAck: has panel locked\n";
 			for (int i = 0; i < window_size; i++){
@@ -324,7 +328,7 @@ void Client::sendPacket(const char *filename, Panel *panel, int pack_size){
 	bool lastPacket = 0;
 	while ((result = fread(fillPacket, cSize, pSize, openedFile)) > 0)
 	{	
-		std::cout<<result<<" - result \n";
+		std::cout<<fillPacket <<" - result \n";
 		//CRC code
 		Checksum csum;
 		std::string crc = csum.calculateCRC(std::string(fillPacket));
@@ -370,7 +374,7 @@ void Client::sendPacket(const char *filename, Panel *panel, int pack_size){
 //calculates the current epoch in milliseconds
 uint64_t Client::milliNow() {
   using namespace std::chrono;
-  return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+  return duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
 }
 //Initializes global variables & begins sendPacket thread
 void Client::startThreads(const char *filename, int pack_size, int windowSize, int sequence_max){
@@ -404,20 +408,30 @@ void Client::startThreads(const char *filename, int pack_size, int windowSize, i
 	}
 	//set up pack_size to send (ADD 8 TO PACK_SIZE IF ADDING CRC)
 	std::string pack_size_string = std::to_string(pack_size + packetInfoSize+idSize);
+	std::string windowSizeString = std::to_string(window_size);
+	std::string seqNumString = std::to_string(seq_max);
 	//pad on left with 0 until 8 characters long
-	while (pack_size_string.length() != 8)
-	{
-		pack_size_string = "0" + pack_size_string;
+	while (pack_size_string.length() != 8 || windowSizeString.length() != 8 || seqNumString.length() != 8) {
+		if (pack_size_string.length() != 8){pack_size_string = "0" + pack_size_string;}
+		if (windowSizeString.length() != 8) {windowSizeString = "0" + windowSizeString;}
+		if (seqNumString.length() != 8) {seqNumString = "0" + seqNumString;}
 	}
-	char const *pack_size_char_arr = pack_size_string.c_str();
+	char * pack_size_char_arr = new char[pack_size_string.length()+1];
+	strcpy(pack_size_char_arr, pack_size_string.c_str());
+	char * window_size_char_arr = new char[windowSizeString.length()+1];
+	strcpy(window_size_char_arr, windowSizeString.c_str());
+	char * seq_num_char_arr = new char[seqNumString.length()+1];
+	strcpy(seq_num_char_arr, seqNumString.c_str());
+	char * all_info = std::strcat(std::strcat(pack_size_char_arr,window_size_char_arr),seq_num_char_arr);
 	//start timer for RTT
 	uint64_t startSend = milliNow();
 	uint64_t endSend;
 	//write packet size to server
-	write(socketfd, (char *)pack_size_char_arr, 8);
+	std::cout<<all_info<<"\n";
+	write(socketfd, (char *)all_info, 26);
 	
-	bzero(buffer, buf_size);
-	read(socketfd, buffer, 8);
+	bzero(all_info, 26);
+	read(socketfd, all_info, 8);
 	if (read>0) {
 		endSend = milliNow();
 	}

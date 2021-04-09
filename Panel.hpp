@@ -1,3 +1,5 @@
+#ifndef _Panel_H
+#define _Panel_H
 #include <string>
 #include <mutex>
 #include <ctime>
@@ -27,7 +29,9 @@ class Panel{
         int isSent();
         int isReceived();
         void markAsSent();
+        void markAsUnsent();
         void markAsReceived();
+        void markNotReceived();
         void fillBuffer(char * buffer, int bufferSize);
         char* getBuffer();
         int tryLockPkt();
@@ -46,3 +50,4 @@ class Panel{
 		int getFail();
 		void setFail(int failStatus);
 };
+#endif

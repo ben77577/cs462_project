@@ -31,15 +31,18 @@ void Panel::setSeqNum(int givenSeqNum) {
 //returns if sent
 int Panel::isSent() {
     return sentPkt;
-    };
+};
 //returns if ACK'd
 int Panel::isReceived() {
     return receivedAck;
-    };
+};
 // mark pkt as sent to server
 void Panel::markAsSent() {
     sentPkt=1;
 };
+void Panel::markAsUnsent() {
+    sentPkt=0;
+}
 // marks pkt as ACK'd
 void Panel::markAsReceived() {
     if(receivedAck == 0) {
@@ -47,6 +50,9 @@ void Panel::markAsReceived() {
     }
     //releasePkt();
 };
+void Panel::markNotReceived() {
+    receivedAck = 0;
+}
 char * Panel::getBuffer(){
     return panelBuffer;
 }
@@ -62,6 +68,7 @@ void Panel::setAsEmpty(){
     timeSent = 0;
     pktSize = 0;
 	fail = 0;
+    fileDone = 0;
 }
 int Panel::isEmpty(){
     return empty;
@@ -88,6 +95,8 @@ int Panel::getPktSize() {
 }
 void Panel::setAsLast() {
     fileDone = 1;
+    seqNum = 0;
+    receivedAck = 0;
 }
 int Panel::isLast() {
     return fileDone;

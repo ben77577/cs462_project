@@ -91,12 +91,22 @@ bool Server::readPackets(int newsockfd, const char* filename){
 	}
 			
 	//read in packet size and convert to int
-	char pack_size_buff[8];
-	int packSizeLength = read(newsockfd, pack_size_buff, 8);
+	int currentPktSeq = 0;
+	char pack_size_buff[30];
+	int packSizeLength = read(newsockfd, pack_size_buff, 30);
+	std::cout<<pack_size_buff<<"\n";
+	int windowSize;
+	int pack_size;
+	int seq_num;
+	std::string pack_size_string(pack_size_buff, 30);
+	pack_size = std::stoi(pack_size_string.substr(0,8));
+	windowSize = std::stoi(pack_size_string.substr(8,8));
+	seq_num = std::stoi(pack_size_string.substr(16, 10));
+	std::cout<<pack_size << " " << windowSize << " " << seq_num << "\n";
 	std::string p(pack_size_buff); 
-	std::stringstream str(p); 
-	int pack_size;  
-	str >> pack_size;  
+	//std::stringstream str(p); 
+	//int pack_size;  
+	//str >> pack_size;  
 	std::cout<<"pack_size"<<pack_size<<"\n";
 	//create and zero buffer
 	char buffer[pack_size];
@@ -104,13 +114,19 @@ bool Server::readPackets(int newsockfd, const char* filename){
 	int receivedPktSize = -1;
 	std::string rps_string = std::to_string(receivedPktSize);
 	send(newsockfd, std::strcat(buffer, rps_string.c_str()), 8, 0);
-	bzero(buffer,pack_size);
+	bzero(buffer,8);
 	if (!send) {
 		std::cout<<"Failure to send RTT ACK \n";
 	}else{
 		std::cout<<"Successfully sent RTT ACK\n";
 	}
-			
+	Panel sPanels[windowSize]= {};
+	for (currentPktSeq = 0; currentPktSeq<windowSize; currentPktSeq++) {
+		(sPanels+currentPktSeq)->setSeqNum(currentPktSeq);
+		(sPanels+currentPktSeq)->markAsUnsent();
+		(sPanels+currentPktSeq)->markNotReceived();
+		(sPanels+currentPktSeq)->allocateBuffer(pack_size-13);
+	}
 	//total size of CRC, sequence numbers, etc...		
 	int packetInfoSize = 8;
 	int idSize = 5;
@@ -119,6 +135,7 @@ bool Server::readPackets(int newsockfd, const char* filename){
 	int packet_counter = 0;
 	//read packets from client
 	while((amtRead = read(newsockfd, buffer, pack_size)) > 0){
+		int currentPkt = -1;
 		amtRead = strlen(buffer);
 		//take client crc & id off buffer		
 		std::cout<<amtRead-packetInfoSize<<"\n";
@@ -128,11 +145,25 @@ bool Server::readPackets(int newsockfd, const char* filename){
 		std::cout<<"id: " << id<<"\n";
 		//CRC code - run crc on server side
 		Checksum csum;
-		std::cout<<"String to be crc'd: " << std::string(buffer).substr(0, amtRead-(packetInfoSize+idSize));
-		std::string crc = csum.calculateCRC(std::string(buffer).substr(0, amtRead-(packetInfoSize+idSize)));
+		std::string currentBuffer = std::string(buffer).substr(0, amtRead-(packetInfoSize+idSize));
+		char * tempBuffer = new char[pack_size-13];
+		memcpy(tempBuffer, buffer, amtRead);
+		std::cout<<"String to be crc'd: " << currentBuffer << "\n" << tempBuffer << "\n";;
+		std::string crc = csum.calculateCRC(currentBuffer);
 		std::string leftPad = "00000000";
 		crc = leftPad.substr(0, 8 - crc.length()) + crc;
 		std::cout<<crc<<"\n";
+		for (int i = 0; i<windowSize; i++) {
+			if ((sPanels+i)->getSeqNum() == std::stoi(id)){
+				(sPanels+i)->markAsReceived();
+				(sPanels+i)->setPktSize(amtRead);
+				(sPanels+i)->fillBuffer(tempBuffer, pack_size-13);
+				bzero(tempBuffer, pack_size-13);
+				currentPkt = i;
+				(sPanels+i)->summary();
+				i = windowSize;
+			}
+		}
 		//print packet information if appropriate
 		if(print_packets){
 			bool dots = true;
@@ -150,10 +181,6 @@ bool Server::readPackets(int newsockfd, const char* filename){
 		if(clientCrc == crc){
 			//equal
 			std::cout << "   - Checksum ok\n";
-			//write packet to file
-			size_t cSize = sizeof(char);
-			size_t writeSize = amtRead - packetInfoSize - idSize;
-			fwrite(buffer,cSize, writeSize,openedFile);
 		}
 		else{
 			std::cout << "   - Checksum failed\n";
@@ -169,17 +196,26 @@ bool Server::readPackets(int newsockfd, const char* filename){
 			if(introduceError == "la"){
 				std::cout << "\nLOSE ACK " << id << "\n";
 				//(*errorObj).erasePacketError(std::stoi(id));
-			}
-			else{
+			}else{
 				send(newsockfd, std::strcat(buffer, id.c_str()), 8, 0);
+				if (!send) {
+					std::cout<<"Failure to send ACK for packet #" << id<<"\n";
+				}else{
+					std::cout<<"ACK " << id << " sent\n";
+					if (currentPkt!= -1) {
+						(sPanels+currentPkt)->markAsSent();
+					}
+				}
 			}
 			
 			bzero(buffer,pack_size);
-			if (!send) {
-				std::cout<<"Failure to send ACK for packet #" << id<<"\n";
-			}else{
-				std::cout<<"ACK " << id << " sent\n";
-			}
+		}
+		while ((sPanels)->isSent() && (sPanels)->isReceived()) {
+			//write packet to file
+			size_t cSize = sizeof(char);
+			memcpy(tempBuffer, (sPanels)->getBuffer(), amtRead-13);
+			fwrite(tempBuffer, cSize, amtRead - 13,openedFile);
+			currentPktSeq = shift(sPanels, windowSize, currentPktSeq);
 		}
 	}
 			
@@ -195,4 +231,24 @@ bool Server::readPackets(int newsockfd, const char* filename){
 	}
 	return printstdBool;
 }
-
+int Server::shift(Panel *panels, int window_size, int currentPktSeq) {
+	int shiftPanel = 0;
+	while (shiftPanel<window_size-1) {
+		(panels+shiftPanel)->setSeqNum((panels+shiftPanel+1)->getSeqNum());
+		(panels+shiftPanel)->fillBuffer((panels+shiftPanel+1)->getBuffer(), (panels+shiftPanel+1)->getPktSize());
+		if ((panels+shiftPanel+1)->isReceived()) {
+			(panels+shiftPanel)->markAsReceived();
+		}else{(panels+shiftPanel)->markNotReceived();}
+		if ((panels+shiftPanel+1)->isSent()) {
+			(panels+shiftPanel)->markAsSent();
+		}else{(panels+shiftPanel)->markAsUnsent();}
+		shiftPanel++;
+	}
+	while (shiftPanel<window_size) {
+		(panels+shiftPanel)->setAsEmpty();
+		(panels+shiftPanel)->setSeqNum(currentPktSeq);
+		currentPktSeq++;
+		shiftPanel++;
+	}
+	return currentPktSeq;
+}
