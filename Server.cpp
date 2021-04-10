@@ -94,7 +94,6 @@ bool Server::readPackets(int newsockfd, const char* filename){
 	int currentPacket = 0;
 	char pack_size_buff[26];
 	int packSizeLength = read(newsockfd, pack_size_buff, 26);
-	std::cout<<pack_size_buff<<"\n";
 	int windowSize;
 	int pack_size;
 	int seq_num;
@@ -102,13 +101,11 @@ bool Server::readPackets(int newsockfd, const char* filename){
 	pack_size = std::stoi(pack_size_string.substr(0,8));
 	windowSize = std::stoi(pack_size_string.substr(8,8));
 	seq_num = std::stoi(pack_size_string.substr(16, 8));
-	std::cout<<pack_size << " " << windowSize << " " << seq_num << "\n";
 	std::string p(pack_size_buff); 
 	bzero(pack_size_buff, 26);
 	//std::stringstream str(p); 
 	//int pack_size;  
 	//str >> pack_size;  
-	std::cout<<"pack_size"<<pack_size<<"\n";
 	//create and zero buffer
 	char buffer[pack_size];
 	bzero(buffer,pack_size);
@@ -219,7 +216,6 @@ bool Server::readPackets(int newsockfd, const char* filename){
 	//clean up
 	close(newsockfd);
 	close(socketfd);
-	std::cout<<"fclose\n";
 	fclose(openedFile);
 			
 	std::cout << "\nReceive Success!\n";
@@ -249,5 +245,16 @@ int Server::shift(Panel *panels, int window_size, int currentPacket, int seqNum)
 		currentPacket++;
 		shiftPanel++;
 	}
+		//print window
+	std::cout << "\nCurrent window = [";
+	for(int loop = 0; loop < window_size; loop++){
+		if(loop == window_size -1){
+			std::cout << (panels + loop)->getPackNum() << "]";
+		}
+		else{
+			std::cout << (panels + loop)->getPackNum() << ", ";
+		}
+	}
+	std::cout<<"\n";
 	return currentPacket;
 }

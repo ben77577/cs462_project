@@ -243,7 +243,7 @@ void Client::handleExpected(Panel *panel, int window_size){
 	}
 	
 	//print window
-	/**std::cout << "\nCurrent window = [";
+	std::cout << "\nCurrent window = [";
 	for(int loop = 0; loop < window_size; loop++){
 		if(loop == window_size -1){
 			std::cout << (panel + loop)->getPackNum() << "]";
@@ -251,7 +251,7 @@ void Client::handleExpected(Panel *panel, int window_size){
 		else{
 			std::cout << (panel + loop)->getPackNum() << ", ";
 		}
-	}**/
+	}
 }
 
 
