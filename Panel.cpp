@@ -20,7 +20,30 @@ Panel::Panel(){
     numberOfSent = 0;
     pktSize = 0;  
 	fail = 0;
+	packetNumber = 0;
+	retransmit = false;
 };
+
+int Panel::getPackNum() {
+    return packetNumber;
+    };
+void Panel::setPackNum(int givenPackNum) {
+    packetNumber = givenPackNum;
+    };
+
+void Panel::markRetransmit() {
+    retransmit = true;
+};
+
+void Panel::markUnRetransmit() {
+    retransmit = false;
+};
+
+bool Panel::getRetransmit() {
+    return retransmit;
+};
+
+
 //returns seqNum
 int Panel::getSeqNum() {
     return seqNum;
@@ -36,6 +59,7 @@ int Panel::isSent() {
 int Panel::isReceived() {
     return receivedAck;
 };
+
 // mark pkt as sent to server
 void Panel::markAsSent() {
     sentPkt=1;
@@ -45,14 +69,17 @@ void Panel::markAsUnsent() {
 }
 // marks pkt as ACK'd
 void Panel::markAsReceived() {
-    if(receivedAck == 0) {
-        receivedAck=1;
-    }
-    //releasePkt();
+	receivedAck = 1;
 };
-void Panel::markNotReceived() {
-    receivedAck = 0;
+
+void Panel::markAsNotSent(){
+	sentPkt = 0;
 }
+
+void Panel::markAsNotReceived(){
+	receivedAck = 0;
+}
+
 char * Panel::getBuffer(){
     return panelBuffer;
 }
@@ -69,6 +96,7 @@ void Panel::setAsEmpty(){
     pktSize = 0;
 	fail = 0;
     fileDone = 0;
+    packetNumber = -1;
 }
 int Panel::isEmpty(){
     return empty;
@@ -88,7 +116,7 @@ void Panel::setTimeSent(time_t currentTime) {
     timeSent = currentTime;
 }
 void Panel::setPktSize(int givenSize) {
-    pktSize = pktSize;
+    pktSize = givenSize;
 }
 int Panel::getPktSize() {
     return pktSize;
@@ -108,8 +136,8 @@ int Panel::getFail(){
 	return fail;
 }
 void Panel::summary() {
-    std::cout<<"Summary for panel " <<seqNum<<"\n";
-    std::cout<<"seqNum = "<<seqNum
+    std::cout<<"Summary for panel " <<packetNumber<<"\n";
+    std::cout<<"seqNum = "<<packetNumber
         <<" sentPkt = "<<sentPkt<<"\n"
         <<" receivedAck = "<<receivedAck
         <<" timeSent = "<<timeSent<<"\n"

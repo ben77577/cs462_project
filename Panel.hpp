@@ -20,10 +20,17 @@ class Panel{
         int fileDone;
         int panelBufferSize;
 		int fail;
+		int packetNumber;
+		bool retransmit;
         //locks Panel for edits
         std::mutex mtxPktLock;
 	public:
         Panel();
+		void markRetransmit();
+		void markUnRetransmit();
+        bool getRetransmit();
+		int getPackNum();
+		void setPackNum(int givenPackNum);
 		int getSeqNum();
         void setSeqNum(int givenSeqNum);
         int isSent();
@@ -31,7 +38,8 @@ class Panel{
         void markAsSent();
         void markAsUnsent();
         void markAsReceived();
-        void markNotReceived();
+		void markAsNotSent();
+        void markAsNotReceived();
         void fillBuffer(char * buffer, int bufferSize);
         char* getBuffer();
         int tryLockPkt();

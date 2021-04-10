@@ -28,9 +28,10 @@ class Client{
 		int numbPcktsExpected;
 		ErrorCreate *errorObj;
 		bool foundEndFile;
+		bool gbn;
 
 	public:
-		Client(std::string ip, std::string po, std::string pr_pa, ErrorCreate* er);
+		Client(std::string ip, std::string po, std::string pr_pa, std::string protocolType, ErrorCreate* er);
 		void start();
 		void sendPacket(const char *filename,Panel *panel, int pack_size);
 		void writePacket(Panel *panel);
@@ -39,7 +40,7 @@ class Client{
 		void handleExpected(Panel *panel, int window_size);
 		void startThreads(const char *filename, int pack_size, int windowSize, int sequence_max);
 		int writeMyPkt(Panel *panel);
-		int findAndFillBuffer(Panel *panel, char *buffer, int packet_counter, int result);
+		int findAndFillBuffer(Panel *panel, char *buffer, int packet_counter, int packet_number, int result);
 		int findAndFillEOF(Panel *panel);
 		uint64_t milliNow();
 };

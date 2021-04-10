@@ -25,5 +25,5 @@ class Server{
 		Server(std::string ip, std::string po, std::string pr_pa, ErrorCreate* er);
 		int start();
 		bool readPackets(int newsockfd, const char* filename);
-		int shift(Panel *panels, int window_size, int currentPktSeq);
+		int shift(Panel *panels, int window_size, int currentPktSeq, int seqNum);
 };

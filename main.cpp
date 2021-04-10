@@ -103,6 +103,7 @@ int main(){
 	//client
 	else if(client_server.compare("client") == 0){
 		std::string errors;
+		std::string protocolType;
 		
 		std::cout<<"Creating client...\n";
 		//get client-specific information from user
@@ -118,13 +119,14 @@ int main(){
 		std::cin >> windowSize;
 		std::cout << "Sequence number range: ";
 		std::cin >> sequence_max;
+		std::cout << "Type of protocol: (sw or gbn) ";
+		std::cin >> protocolType;
 		
 		ErrorCreate errorObj = promptErrors("client");
 	
-		//std::cout << errorObj.getPacketError(8);	
 	
 		//create Client object
-		Client client(ip_address, port_number, print_packets, &errorObj);
+		Client client(ip_address, port_number, print_packets, protocolType, &errorObj);
 		//start the client
 		client.start();
 		//send packets to the server
