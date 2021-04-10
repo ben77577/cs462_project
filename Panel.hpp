@@ -10,7 +10,7 @@ class Panel{
 		int seqNum;
         int sentPkt;
         int receivedAck;
-        time_t timeSent; //epoch now-timeSent>=timeout -> resend pkt -> timeSent++;
+        uint64_t timeSent; //epoch now-timeSent>=timeout -> resend pkt -> timeSent++;
         int numberOfSent;
         int empty;
         char * panelBuffer;
@@ -44,8 +44,8 @@ class Panel{
         int isEmpty();
         void setAsEmpty();
         void setAsOccupied();
-        time_t getTimeSent();
-        void setTimeSent(time_t currentTime);
+        uint64_t getTimeSent();
+        void setTimeSent(uint64_t currentTime);
         void setPktSize(int givenSize);
         int getPktSize();
         int isLast();
