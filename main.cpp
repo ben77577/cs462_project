@@ -104,6 +104,7 @@ int main(){
 	else if(client_server.compare("client") == 0){
 		std::string errors;
 		std::string protocolType;
+		uint64_t timeout = 0;
 		
 		std::cout<<"Creating client...\n";
 		//get client-specific information from user
@@ -121,12 +122,14 @@ int main(){
 		std::cin >> sequence_max;
 		std::cout << "Type of protocol: (sw or gbn) ";
 		std::cin >> protocolType;
+		std::cout << "Timeout (milliseconds): (enter 0 for ping-calculated) ";
+		std::cin >> timeout;
 		
 		ErrorCreate errorObj = promptErrors("client");
 	
 	
 		//create Client object
-		Client client(ip_address, port_number, print_packets, protocolType, &errorObj);
+		Client client(ip_address, port_number, print_packets, protocolType, timeout, &errorObj);
 		//start the client
 		client.start();
 		//send packets to the server

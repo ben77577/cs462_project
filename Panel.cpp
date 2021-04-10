@@ -109,10 +109,10 @@ int Panel::tryLockPkt(){
 }
 void Panel::releasePkt(){
 }
-time_t Panel::getTimeSent() {
+uint64_t Panel::getTimeSent() {
     return timeSent;
 }
-void Panel::setTimeSent(time_t currentTime) {
+void Panel::setTimeSent(uint64_t currentTime) {
     timeSent = currentTime;
 }
 void Panel::setPktSize(int givenSize) {

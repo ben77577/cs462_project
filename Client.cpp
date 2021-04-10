@@ -14,7 +14,7 @@
 #include "Client.hpp"
 
 //constructor
-Client::Client(std::string ip, std::string po, std::string pr_pa, std::string protocolType, ErrorCreate* er){
+Client::Client(std::string ip, std::string po, std::string pr_pa, std::string protocolType, uint64_t timeoutVal, ErrorCreate* er){
 	ip_address = ip; 
 	port = po;
 	//set print_packets appropriatly
@@ -35,7 +35,8 @@ Client::Client(std::string ip, std::string po, std::string pr_pa, std::string pr
 	}
 	else{
 		gbn = false;
-	}	
+	}
+	timeout = timeoutVal;
 }
 
 
@@ -95,7 +96,9 @@ int Client::writeMyPkt(Panel *panel) {
 			
 			
 		//is sent && didn't receive an ack && timed out
-		if(((panel+writeLoop)->isSent() == 1 && (panel+writeLoop)->isReceived() == 0) && (time(&now) - (panel+writeLoop)->getTimeSent() > 1)){
+		int timeDifference = milliNow() - (panel+writeLoop)->getTimeSent();
+		if(((panel+writeLoop)->isSent() == 1 && (panel+writeLoop)->isReceived() == 0) &&  timeDifference > timeout){
+			//std::cout << "\nACTUAL TIME: " << timeDifference << " RTT*15 "<< (roundtt * 300)<<"\n";
 			timedOut = true;
 			std::cout << "\nPacket #" << (panel+writeLoop)->getPackNum() << " *****TIMED OUT*****";
 			if(gbn){
@@ -167,7 +170,7 @@ int Client::writeMyPkt(Panel *panel) {
 				time_t sentTime;
 				time(&sentTime);
 						
-				(panel + writeLoop)->setTimeSent(sentTime);
+				(panel + writeLoop)->setTimeSent(milliNow());
 				writeLoop = window_size;
 			}
 		}
@@ -473,6 +476,14 @@ void Client::startThreads(const char *filename, int pack_size, int windowSize, i
 		endSend = milliNow();
 	}
 	uint64_t RTT = endSend-startSend;
+	if(RTT == 0){
+			RTT = 1;
+	}
+	roundtt = RTT;
+	
+	if(timeout == 0){
+		timeout = (roundtt*300);
+	}
 	
 	std::thread sPkt([&](){ Client::sendPacket(filename, panel, pack_size);});
 	sPkt.join();

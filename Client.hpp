@@ -29,9 +29,11 @@ class Client{
 		ErrorCreate *errorObj;
 		bool foundEndFile;
 		bool gbn;
+		uint64_t timeout;
+		uint64_t roundtt;
 
 	public:
-		Client(std::string ip, std::string po, std::string pr_pa, std::string protocolType, ErrorCreate* er);
+		Client(std::string ip, std::string po, std::string pr_pa, std::string protocolType, uint64_t timeoutVal, ErrorCreate* er);
 		void start();
 		void sendPacket(const char *filename,Panel *panel, int pack_size);
 		void writePacket(Panel *panel);

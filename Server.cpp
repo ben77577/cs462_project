@@ -136,8 +136,10 @@ bool Server::readPackets(int newsockfd, const char* filename){
 	int amtRead;
 	//read packets from client
 	while((amtRead = read(newsockfd, buffer, pack_size)) > 0){
-		int foundPkt = -1;
-		amtRead = strlen(buffer);
+		if(strlen(buffer) < pack_size){
+			amtRead = strlen(buffer);
+		}
+		
 		//take client crc & id off buffer		
 		std::string clientCrc = std::string(buffer).substr(amtRead-(packetInfoSize),packetInfoSize);
 		std::string id = std::string(buffer).substr(amtRead-(packetInfoSize+idSize),idSize);
