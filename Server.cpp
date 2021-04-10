@@ -154,7 +154,6 @@ bool Server::readPackets(int newsockfd, const char* filename){
 				(sPanels+i)->markAsReceived();
 				(sPanels+i)->setPktSize(amtRead-13);
 				(sPanels+i)->fillBuffer(buffer, amtRead-13);
-				foundPkt = i;
 				i = windowSize;
 			}
 		}
