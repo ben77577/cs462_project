@@ -76,6 +76,7 @@ int Client::writeMyPkt(Panel *panel) {
 	bzero(writebuffer, buf_size);
 
 	if (writebuffer == NULL){
+		std::lock_guard<std::mutex> client_print(clientPrint);
 		fputs("Error setting up buffer", stderr);
 		exit(2);
 	}
@@ -101,6 +102,7 @@ int Client::writeMyPkt(Panel *panel) {
 		int timeDifference = milliNow() - (panel+writeLoop)->getTimeSent();
 		if(((panel+writeLoop)->isSent() == 1 && (panel+writeLoop)->isReceived() == 0) &&  timeDifference > timeout){
 			timedOut = true;
+			std::lock_guard<std::mutex> client_print(clientPrint);
 			std::cout << "\nPacket #" << (panel+writeLoop)->getPackNum() << " *****TIMED OUT*****";
 			if(gbn){
 				//clear out
@@ -138,10 +140,12 @@ int Client::writeMyPkt(Panel *panel) {
 				if(introduceError == "da"){
 					//damage packet
 					buff[0] = buff[0]+1;
+					std::lock_guard<std::mutex> client_print(clientPrint);
 					std::cout << "\nPacket " << (panel+writeLoop)->getPackNum() << " damaged";
 				}
 				else if(introduceError == "dr"){
 					dropPacket = true;
+					std::lock_guard<std::mutex> client_print(clientPrint);
 					std::cout << "\nPacket " << (panel+writeLoop)->getPackNum() << " dropped";
 				}
 			}
@@ -152,11 +156,13 @@ int Client::writeMyPkt(Panel *panel) {
 			}
 					
 			if (!send){
+				std::lock_guard<std::mutex> client_print(clientPrint);
 				std::cout << "writePacket: Packet #" << writeID << " failed to send.\n";
 			}else if(!dontSend){
 				(panel + writeLoop)->markAsSent();
 				
 				if(timedOut || (panel + writeLoop)->getRetransmit()){
+					std::lock_guard<std::mutex> client_print(clientPrint);
 					std::cout << "\nPacket #" << (panel + writeLoop)->getSeqNum() << " Re-transmitted";
 					retransmittedCount++;
 					if((panel + writeLoop)->getRetransmit()){
@@ -164,6 +170,7 @@ int Client::writeMyPkt(Panel *panel) {
 					}
 				}
 				else{
+					std::lock_guard<std::mutex> client_print(clientPrint);
 					std::cout << "\nPacket #" << (panel + writeLoop)->getSeqNum() << " sent";
 				}	
 				
@@ -244,13 +251,14 @@ void Client::handleExpected(Panel *panel, int window_size){
 	
 	//print window
 	if(print_detailed){
+		std::lock_guard<std::mutex> client_print(clientPrint);
 		std::cout << "\nCurrent window = [";
 		for(int loop = 0; loop < window_size; loop++){
 			if(loop == window_size -1){
-				std::cout << (panel + loop)->getPackNum() << "]";
+				std::cout << (panel + loop)->getPackNum()%seq_max << "]";
 			}
 			else{
-				std::cout << (panel + loop)->getPackNum() << ", ";
+				std::cout << (panel + loop)->getPackNum()%seq_max << ", ";
 			}
 		}
 	}
@@ -264,6 +272,7 @@ void Client::readAck(Panel *panel){
 	bzero(readBuffer, buf_size);
 
 	if (readBuffer == NULL){
+		std::lock_guard<std::mutex> client_print(clientPrint);
 		fputs("Error setting up buffer", stderr);
 		exit(2);
 	}
@@ -271,11 +280,13 @@ void Client::readAck(Panel *panel){
 	while(!(panel)->isLast()) {	
 		read(socketfd, readBuffer, 8);
 		if (read < 0){
+			std::lock_guard<std::mutex> client_print(clientPrint);
 			std::cout << "readAck: Failure to catch ACK \n";
 		}
 		else{
 			std::string ack = std::string(readBuffer);
 			if(print_detailed){
+				std::lock_guard<std::mutex> client_print(clientPrint);
 				std::cout << "\nAck #" << ack << " received";
 			}
 			int ackComp = std::stoi(ack);
@@ -356,6 +367,7 @@ void Client::sendPacket(const char *filename, Panel *panel, int pack_size){
 	//open file for reading
 	FILE *openedFile = fopen(filename, "r");
 	if (openedFile == NULL){
+		std::lock_guard<std::mutex> client_print(clientPrint);
 		std::cout << "sendpacket: Error opening file to read. (Do you have r permissions for this file?)\n";
 		exit(2);
 	}

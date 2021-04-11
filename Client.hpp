@@ -25,6 +25,7 @@ class Client{
 		int buf_size;
 		int seq_max;
 		std::mutex windowLock;
+		std::mutex clientPrint;
 		int numbPcktsExpected;
 		ErrorCreate *errorObj;
 		bool foundEndFile;

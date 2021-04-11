@@ -137,6 +137,7 @@ bool Server::readPackets(int newsockfd, const char* filename){
 	int amtRead;
 	//read packets from client
 	while((amtRead = read(newsockfd, buffer, pack_size)) > 0){
+		retransmittedCount++;
 		if(strlen(buffer) < pack_size){
 			amtRead = strlen(buffer);
 		}
@@ -159,13 +160,10 @@ bool Server::readPackets(int newsockfd, const char* filename){
 				(sPanels+i)->markAsReceived();
 				(sPanels+i)->setPktSize(amtRead-13);
 				(sPanels+i)->fillBuffer(buffer, amtRead-13);
+				std::cout<<"Filled buffer: " << (sPanels+i)->getBuffer()<< "\n";
 				i = windowSize;
 				anyBufferFilled = true;
 			}
-		}
-		
-		if(!anyBufferFilled){
-			retransmittedCount++;
 		}
 		//print packet information if appropriate
 
@@ -221,13 +219,13 @@ bool Server::readPackets(int newsockfd, const char* filename){
 			//write packet to file
 			size_t cSize = sizeof(char);
 			bzero(buffer, pack_size);
-			memcpy(buffer, (sPanels)->getBuffer(), amtRead-13);
-			fwrite(buffer, cSize, amtRead - 13,openedFile);
+			fwrite((sPanels)->getBuffer(), cSize, amtRead - 13,openedFile);
 			lastSeqNum = std::stoi(id)%seq_num;
-			//(sPanels)->setAsEmpty();
-			//(sPanels)->setAsOccupied();
-			currentPacket = shift(sPanels, windowSize, currentPacket, seq_num);
+			(sPanels)->setAsEmpty();
+			(sPanels)->setAsOccupied();
+			currentPacket = shift(sPanels, windowSize, currentPacket, seq_num, pack_size-13);
 		}
+		bzero(buffer, pack_size);
 	}
 			
 	//clean up
@@ -243,15 +241,19 @@ bool Server::readPackets(int newsockfd, const char* filename){
 	
 	std::cout << "\nLast packet seq# received: " << lastSeqNum << "\n";
 	std::cout << "Number of original packets received: " << (curId+1) << "\n";
-	std::cout << "Number of retransmitted packets received: " << retransmittedCount << "\n\n";
+	std::cout << "Number of retransmitted packets received: " << retransmittedCount-(curId+1) << "\n\n";
 	
 	return printstdBool;
 }
-int Server::shift(Panel *panels, int window_size, int currentPacket, int seqNum) {
+int Server::shift(Panel *panels, int window_size, int currentPacket, int seqNum, int pack_size) {
 	int shiftPanel = 0;
+	int nextPktSize = 0;
 	while (shiftPanel<window_size-1) {
 		(panels+shiftPanel)->setPackNum((panels+shiftPanel+1)->getPackNum());
-		(panels+shiftPanel)->fillBuffer((panels+shiftPanel+1)->getBuffer(), (panels+shiftPanel+1)->getPktSize());
+		if ((panels+shiftPanel+1)->getPktSize()==0) {
+			nextPktSize = pack_size;
+		}else{nextPktSize = (panels+shiftPanel+1)->getPktSize();}
+		(panels+shiftPanel)->fillBuffer((panels+shiftPanel+1)->getBuffer(), nextPktSize);
 		if ((panels+shiftPanel+1)->isReceived()) {
 			(panels+shiftPanel)->markAsReceived();
 		}else{(panels+shiftPanel)->markAsNotReceived();}
@@ -273,10 +275,10 @@ int Server::shift(Panel *panels, int window_size, int currentPacket, int seqNum)
 		std::cout << "\nCurrent window = [";
 		for(int loop = 0; loop < window_size; loop++){
 			if(loop == window_size -1){
-				std::cout << (panels + loop)->getPackNum() << "]";
+				std::cout << (panels + loop)->getPackNum()%seqNum << "]";
 			}
 			else{
-				std::cout << (panels + loop)->getPackNum() << ", ";
+				std::cout << (panels + loop)->getPackNum()%seqNum << ", ";
 			}
 		}
 		std::cout<<"\n";
