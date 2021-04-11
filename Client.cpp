@@ -482,7 +482,7 @@ void Client::startThreads(const char *filename, int pack_size, int windowSize, i
 	roundtt = RTT;
 	
 	if(timeout == 0){
-		timeout = (roundtt*300);
+		timeout = (roundtt*500);
 	}
 	
 	std::thread sPkt([&](){ Client::sendPacket(filename, panel, pack_size);});
