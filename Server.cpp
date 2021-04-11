@@ -161,11 +161,9 @@ bool Server::readPackets(int newsockfd, const char* filename){
 		for (int i = 0; i<windowSize; i++) {
 			if ((sPanels+i)->getPackNum() == std::stoi(id)){
 				(sPanels+i)->markAsReceived();
-
 				(sPanels+i)->setPktSize(amtRead-16);
 				(sPanels+i)->fillBuffer(buffer, amtRead-16);
 				//std::cout<<"Filled buffer: " << (sPanels+i)->getBuffer()<< "\n";
-
 				i = windowSize;
 				anyBufferFilled = true;
 				
@@ -230,8 +228,8 @@ bool Server::readPackets(int newsockfd, const char* filename){
 			fwrite((sPanels)->getBuffer(), cSize, amtRead - 16,openedFile);
 
 			lastSeqNum = std::stoi(id)%seq_num;
-			(sPanels)->setAsEmpty();
-			(sPanels)->setAsOccupied();
+			//(sPanels)->setAsEmpty();
+			//(sPanels)->setAsOccupied();
 			currentPacket = shift(sPanels, windowSize, currentPacket, seq_num, pack_size-13);
 		}
 		bzero(buffer, pack_size);
