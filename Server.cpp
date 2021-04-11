@@ -173,7 +173,7 @@ bool Server::readPackets(int newsockfd, const char* filename){
 		//for(int loop = 0; loop < amtRead - (packetInfoSize+idSize); loop++){
 		//	std::cout << buffer[loop];
 		//}
-		//std::cout<<"\n";
+		
 		
 		
 		//test if the two crcs are equal

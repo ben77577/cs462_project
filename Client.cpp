@@ -91,7 +91,7 @@ int Client::writeMyPkt(Panel *panel) {
 		time_t now;	
 		//if the panel is the last
 		if ((panel)->isLast()) {
-			//EOF found in first panel, exit function
+			//EOF found in first panel then exit function
 			foundEOF = 1;
 			foundEndFile = true;
 			return foundEOF;
