@@ -117,7 +117,7 @@ int main(){
 		std::cin >> packet_size;
 		std::cout << "Window size: ";
 		std::cin >> windowSize;
-		std::cout << "Sequence number range: (<=Window size) ";
+		std::cout << "Sequence number range: (>Window size) ";
 		std::cin >> sequence_max;
 		if(sequence_max<=windowSize) {
 			std::cout<< "Invalid sequence number\n";
