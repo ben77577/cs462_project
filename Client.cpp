@@ -123,7 +123,7 @@ int Client::writeMyPkt(Panel *panel) {
 			int writeID = (panel + writeLoop)->getPackNum();
 			writebuffer = (panel + writeLoop)->getBuffer();
 
-			char buff[pSize + 13];
+			char buff[pSize + 16];
 			strcpy(buff,writebuffer);
 				
 			dontSend = false;
@@ -152,7 +152,7 @@ int Client::writeMyPkt(Panel *panel) {
 				
 			//send packet
 			if(!dropPacket && !dontSend){
-				send(socketfd, buff, pSize + 13, 0);
+				send(socketfd, buff, pSize + 16, 0);
 			}
 					
 			if (!send){
@@ -293,7 +293,8 @@ void Client::readAck(Panel *panel){
 			std::lock_guard<std::mutex> window_lock(windowLock);
 			
 			for (int i = 0; i < window_size; i++){
-				if ((panel + i)->getPackNum() == ackComp){
+				int currentPackNum = (panel + i)->getPackNum();
+				if (currentPackNum == ackComp){
 					//ack panel
 					(panel+i)->markAsReceived();
 					if (i == 0){
@@ -384,8 +385,8 @@ void Client::sendPacket(const char *filename, Panel *panel, int pack_size){
 		
 		//construct id
 		std::string id = std::to_string(currentPacket);
-		leftPad = "00000";
-		id = leftPad.substr(0, 5 - id.length()) + id;
+		leftPad = "00000000";
+		id = leftPad.substr(0, 8 - id.length()) + id;
 		
 		//combine buffer, id, and crc
 		std::strcat(std::strcat(fillPacket, id.c_str()), crc.c_str());
@@ -441,7 +442,7 @@ void Client::startThreads(const char *filename, int pack_size, int windowSize, i
 	
 	//set global variables
 	//total size of CRC and sequence number
-	int packetInfoSize = 13;
+	int packetInfoSize = 16;
 	seq_max = sequence_max;
 	window_size = windowSize;
 	int serverWindowSize = window_size;
@@ -499,7 +500,7 @@ void Client::startThreads(const char *filename, int pack_size, int windowSize, i
 	roundtt = RTT;
 	
 	if(timeout == 0){
-		timeout = (roundtt*1000);
+		timeout = (roundtt*500);
 	}
 	
 	uint64_t startPacketSending = milliNow();
@@ -514,6 +515,6 @@ void Client::startThreads(const char *filename, int pack_size, int windowSize, i
 	std::cout<<"\nNumber of original packets sent: "<< endPacketCount <<"\n";
 	std::cout<<"Number of retransmitted packets: "<< retransmittedCount <<"\n";
 	std::cout<<"Total elapsed time: "<< totalElapsedTime <<" seconds\n";
-	std::cout<<"Total throughput (Mbps): "<< ((double)((pSize+13)*endPacketCount)/1000.0)/totalElapsedTime <<"\n";
-	std::cout<<"Effective throughput (Mbps): "<< ((double)((pSize)*endPacketCount)/1000.0)/totalElapsedTime <<"\n\n";
+	std::cout<<"Total throughput (Mbps): "<< ((double)((pSize+16)*endPacketCount)/1000000.0)/totalElapsedTime <<"\n";
+	std::cout<<"Effective throughput (Mbps): "<< ((double)((pSize)*endPacketCount)/1000000.0)/totalElapsedTime <<"\n\n";
 }

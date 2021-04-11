@@ -24,6 +24,7 @@ class Server{
 		int retransmittedCount;
 		int lastSeqNum;
 		ErrorCreate *errorObj;
+		int actualPackCounter;
 	public:
 		Server(std::string ip, std::string po, std::string pr_pa, ErrorCreate* er);
 		int start();

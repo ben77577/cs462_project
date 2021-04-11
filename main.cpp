@@ -117,7 +117,7 @@ int main(){
 		std::cin >> packet_size;
 		std::cout << "Window size: ";
 		std::cin >> windowSize;
-		std::cout << "Sequence number range: (<=Window size) ";
+		std::cout << "Sequence number range: ( > Window size) ";
 		std::cin >> sequence_max;
 		if(sequence_max<=windowSize) {
 			std::cout<< "Invalid sequence number\n";
@@ -130,6 +130,8 @@ int main(){
 		
 		ErrorCreate errorObj = promptErrors("client");
 	
+		//convert timeout to microseconds
+		timeout = timeout*1000;
 	
 		//create Client object
 		Client client(ip_address, port_number, print_packets, protocolType, timeout, &errorObj);

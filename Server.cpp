@@ -100,6 +100,7 @@ bool Server::readPackets(int newsockfd, const char* filename){
 	int pack_size;
 	int seq_num;
 	std::string pack_size_string(pack_size_buff, 30);
+	//std::cout << "\n\n\nPACKET SIZE: " << pack_size_string.substr(0,8) << "\n\n\n";
 	pack_size = std::stoi(pack_size_string.substr(0,8));
 	windowSize = std::stoi(pack_size_string.substr(8,8));
 	seq_num = std::stoi(pack_size_string.substr(16, 8));
@@ -127,12 +128,12 @@ bool Server::readPackets(int newsockfd, const char* filename){
 		(sPanels+currentPacket)->setPackNum(currentPacket);
 		(sPanels+currentPacket)->markAsUnsent();
 		(sPanels+currentPacket)->markAsNotReceived();
-		(sPanels+currentPacket)->allocateBuffer(pack_size-13);
+		(sPanels+currentPacket)->allocateBuffer(pack_size-16);
 		(sPanels+currentPacket)->setAsOccupied();
 	}
 	//total size of CRC, sequence numbers, etc...		
 	int packetInfoSize = 8;
-	int idSize = 5;
+	int idSize = 8;
 	
 	int amtRead;
 	//read packets from client
@@ -146,11 +147,13 @@ bool Server::readPackets(int newsockfd, const char* filename){
 		std::string clientCrc = std::string(buffer).substr(amtRead-(packetInfoSize),packetInfoSize);
 		std::string id = std::string(buffer).substr(amtRead-(packetInfoSize+idSize),idSize);
 		
+		//std::cout << id <<"\n";
 		//id to print at the end
 		curId = std::stoi(id);
+		
 		//CRC code - run crc on server side
 		Checksum csum;
-		std::string currentBuffer = std::string(buffer).substr(0, amtRead-13);
+		std::string currentBuffer = std::string(buffer).substr(0, amtRead-16);
 		std::string crc = csum.calculateCRC(currentBuffer);
 		std::string leftPad = "00000000";
 		crc = leftPad.substr(0, 8 - crc.length()) + crc;
@@ -158,11 +161,14 @@ bool Server::readPackets(int newsockfd, const char* filename){
 		for (int i = 0; i<windowSize; i++) {
 			if ((sPanels+i)->getPackNum() == std::stoi(id)){
 				(sPanels+i)->markAsReceived();
-				(sPanels+i)->setPktSize(amtRead-13);
-				(sPanels+i)->fillBuffer(buffer, amtRead-13);
-				std::cout<<"Filled buffer: " << (sPanels+i)->getBuffer()<< "\n";
+
+				(sPanels+i)->setPktSize(amtRead-16);
+				(sPanels+i)->fillBuffer(buffer, amtRead-16);
+				//std::cout<<"Filled buffer: " << (sPanels+i)->getBuffer()<< "\n";
+
 				i = windowSize;
 				anyBufferFilled = true;
+				
 			}
 		}
 		//print packet information if appropriate
@@ -219,7 +225,10 @@ bool Server::readPackets(int newsockfd, const char* filename){
 			//write packet to file
 			size_t cSize = sizeof(char);
 			bzero(buffer, pack_size);
-			fwrite((sPanels)->getBuffer(), cSize, amtRead - 13,openedFile);
+
+			memcpy(buffer, (sPanels)->getBuffer(), amtRead-16);
+			fwrite((sPanels)->getBuffer(), cSize, amtRead - 16,openedFile);
+
 			lastSeqNum = std::stoi(id)%seq_num;
 			(sPanels)->setAsEmpty();
 			(sPanels)->setAsOccupied();
@@ -235,7 +244,7 @@ bool Server::readPackets(int newsockfd, const char* filename){
 			
 	
 	if(printstdBool){
-		std::cout << stdoutBuf << "\n";
+		std::cout << "\n\n" << stdoutBuf << "\n";
 		free(stdoutBuf);
 	}
 	
