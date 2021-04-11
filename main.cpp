@@ -120,7 +120,7 @@ int main(){
 		std::cin >> windowSize;
 		std::cout << "Sequence number range: ";
 		std::cin >> sequence_max;
-		std::cout << "Type of protocol: (sw or gbn) ";
+		std::cout << "Type of protocol: (sr or gbn) ";
 		std::cin >> protocolType;
 		std::cout << "Timeout (milliseconds): (enter 0 for ping-calculated) ";
 		std::cin >> timeout;
