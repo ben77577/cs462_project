@@ -16,12 +16,14 @@ Server::Server(std::string ip, std::string po, std::string pr_pa, ErrorCreate* e
 	ip_address = ip;
 	port = po;
 	if(pr_pa.compare("y") == 0){
-		print_packets = true;
+		print_detailed = true;
 	}
 	else{
-		print_packets = false;
+		print_detailed = false;
 	}
 	errorObj = er;
+	retransmittedCount = 0;
+	lastSeqNum = 0;
 }
 		
 int Server::start(){
@@ -116,7 +118,9 @@ bool Server::readPackets(int newsockfd, const char* filename){
 	if (!send) {
 		std::cout<<"Failure to send RTT ACK \n";
 	}else{
-		std::cout<<"Successfully sent RTT ACK\n";
+		if(print_detailed){
+			std::cout<<"Successfully sent RTT ACK\n";
+		}
 	}
 	Panel sPanels[windowSize]= {};
 	for (currentPacket = 0; currentPacket<windowSize; currentPacket++) {
@@ -140,49 +144,58 @@ bool Server::readPackets(int newsockfd, const char* filename){
 		//take client crc & id off buffer		
 		std::string clientCrc = std::string(buffer).substr(amtRead-(packetInfoSize),packetInfoSize);
 		std::string id = std::string(buffer).substr(amtRead-(packetInfoSize+idSize),idSize);
+		
+		//id to print at the end
+		curId = std::stoi(id);
 		//CRC code - run crc on server side
 		Checksum csum;
 		std::string currentBuffer = std::string(buffer).substr(0, amtRead-13);
 		std::string crc = csum.calculateCRC(currentBuffer);
 		std::string leftPad = "00000000";
 		crc = leftPad.substr(0, 8 - crc.length()) + crc;
+		bool anyBufferFilled = false;
 		for (int i = 0; i<windowSize; i++) {
 			if ((sPanels+i)->getPackNum() == std::stoi(id)){
 				(sPanels+i)->markAsReceived();
 				(sPanels+i)->setPktSize(amtRead-13);
 				(sPanels+i)->fillBuffer(buffer, amtRead-13);
 				i = windowSize;
+				anyBufferFilled = true;
 			}
-		}
-		//print packet information if appropriate
-		if(print_packets){
-			bool dots = true;
-			std::cout<<std::dec;
-			std::cout << "Received packet #" << std::stoi(id)%seq_num << " - ";
-			for(int loop = 0; loop < amtRead - (packetInfoSize+idSize); loop++){
-				std::cout << buffer[loop];
-			}
-			std::cout<<"\n";
-			//print checksum
-			//std::cout << "  - CRC: " << crc << "    Client-calculated CRC: "<< clientCrc << "\n";
 		}
 		
-		//test if the two crcs are equal
-		if(clientCrc == crc){
-			//equal
-			std::cout << "   - Checksum ok\n";
+		if(!anyBufferFilled){
+			retransmittedCount++;
 		}
-		else{
-			std::cout << "   - Checksum failed\n";
-		}				
+		//print packet information if appropriate
+
+		bool dots = true;
+		
+		std::cout << "Packet #" << std::stoi(id)%seq_num << " received\n";
+		//for(int loop = 0; loop < amtRead - (packetInfoSize+idSize); loop++){
+		//	std::cout << buffer[loop];
+		//}
+		//std::cout<<"\n";
+		
+		
+		//test if the two crcs are equal
+		if(print_detailed){
+			if(clientCrc == crc){
+				//equal
+				std::cout << "   - Checksum ok\n";
+			}
+			else{
+				std::cout << "   - Checksum failed\n";
+			}
+		}
 		//increment counter and clear buffer
-		std::cout<<(std::stoi(id)<=(sPanels+windowSize-1)->getPackNum())<<("\n");
+		//std::cout<<(std::stoi(id)<=(sPanels+windowSize-1)->getPackNum())<<("\n");
 		if (clientCrc == crc && std::stoi(id) <= (sPanels+windowSize-1)->getPackNum()) {
 			//check for lose ack error before sending ack
 			//std::cout << "ACK ID::: "<<std::stoi(id)<<"\n";
 			std::string introduceError = (*errorObj).getPacketError(std::stoi(id));
 			if(introduceError == "la"){
-				std::cout << "\nLOSE ACK " << std::stoi(id)%seq_num << "\n";
+				std::cout << "\nLose Ack " << std::stoi(id)%seq_num << "\n";
 
 				//(*errorObj).erasePacketError(std::stoi(id));
 			}else{
@@ -191,14 +204,17 @@ bool Server::readPackets(int newsockfd, const char* filename){
 				if (!send) {
 					std::cout<<"Failure to send ACK for packet #" << id<<"\n";
 				}else{
-					std::cout<<"ACK " << std::stoi(id)%seq_num << " sent\n";
+					if(print_detailed){
+						std::cout<<"Ack " << std::stoi(id)%seq_num << " sent\n";
+					}
 				}
 			}
+			
 			for (int ackShift = 0; ackShift<windowSize; ackShift++) {
-						if (std::stoi(id)==(sPanels+ackShift)->getPackNum()) {
-							(sPanels+ackShift)->markAsSent();
-						}
-					} 
+				if (std::stoi(id)==(sPanels+ackShift)->getPackNum()) {
+					(sPanels+ackShift)->markAsSent();
+				}
+			} 
 			
 		}
 		while ((sPanels)->isSent() && (sPanels)->isReceived()) {
@@ -207,6 +223,7 @@ bool Server::readPackets(int newsockfd, const char* filename){
 			bzero(buffer, pack_size);
 			memcpy(buffer, (sPanels)->getBuffer(), amtRead-13);
 			fwrite(buffer, cSize, amtRead - 13,openedFile);
+			lastSeqNum = std::stoi(id)%seq_num;
 			//(sPanels)->setAsEmpty();
 			//(sPanels)->setAsOccupied();
 			currentPacket = shift(sPanels, windowSize, currentPacket, seq_num);
@@ -218,11 +235,16 @@ bool Server::readPackets(int newsockfd, const char* filename){
 	close(socketfd);
 	fclose(openedFile);
 			
-	std::cout << "\nReceive Success!\n";
+	
 	if(printstdBool){
 		std::cout << stdoutBuf << "\n";
 		free(stdoutBuf);
 	}
+	
+	std::cout << "\nLast packet seq# received: " << lastSeqNum << "\n";
+	std::cout << "Number of original packets received: " << (curId+1) << "\n";
+	std::cout << "Number of retransmitted packets received: " << retransmittedCount << "\n\n";
+	
 	return printstdBool;
 }
 int Server::shift(Panel *panels, int window_size, int currentPacket, int seqNum) {
@@ -245,16 +267,19 @@ int Server::shift(Panel *panels, int window_size, int currentPacket, int seqNum)
 		currentPacket++;
 		shiftPanel++;
 	}
-		//print window
-	std::cout << "\nCurrent window = [";
-	for(int loop = 0; loop < window_size; loop++){
-		if(loop == window_size -1){
-			std::cout << (panels + loop)->getPackNum() << "]";
+	
+	//print window
+	if(print_detailed){
+		std::cout << "\nCurrent window = [";
+		for(int loop = 0; loop < window_size; loop++){
+			if(loop == window_size -1){
+				std::cout << (panels + loop)->getPackNum() << "]";
+			}
+			else{
+				std::cout << (panels + loop)->getPackNum() << ", ";
+			}
 		}
-		else{
-			std::cout << (panels + loop)->getPackNum() << ", ";
-		}
+		std::cout<<"\n";
 	}
-	std::cout<<"\n";
 	return currentPacket;
 }

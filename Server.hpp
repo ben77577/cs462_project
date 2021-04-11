@@ -19,7 +19,10 @@ class Server{
 		int socketfd;
 		int clientfd;
 		struct sockaddr_in sockaddr;
-		bool print_packets;
+		bool print_detailed;
+		int curId;
+		int retransmittedCount;
+		int lastSeqNum;
 		ErrorCreate *errorObj;
 	public:
 		Server(std::string ip, std::string po, std::string pr_pa, ErrorCreate* er);

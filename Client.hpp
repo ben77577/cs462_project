@@ -18,7 +18,7 @@ class Client{
 		std::string port;
 		int socketfd;
 		struct sockaddr_in sockaddr;
-		bool print_packets;
+		bool print_detailed;
 		int window_size;
 		int pSize;
 		int cSize;
@@ -31,6 +31,9 @@ class Client{
 		bool gbn;
 		uint64_t timeout;
 		uint64_t roundtt;
+		int endPacketCount;
+		int retransmittedCount;
+		
 
 	public:
 		Client(std::string ip, std::string po, std::string pr_pa, std::string protocolType, uint64_t timeoutVal, ErrorCreate* er);

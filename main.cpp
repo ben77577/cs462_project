@@ -7,7 +7,6 @@
 #include <iomanip>
 #include <unistd.h>
 
-//#include "ErrorCreate.hpp"
 #include "Client.hpp"
 #include "Server.hpp"
 
@@ -67,7 +66,7 @@ int main(){
 	//get general information from user
 	std::cout << "client or server? (Case sensitive) ";
 	std::cin >> client_server;
-	std::cout << "print packets to console? (y/n) ";
+	std::cout << "print detailed info to console? (y/n) ";
 	std::cin >> print_packets;
 	
 	

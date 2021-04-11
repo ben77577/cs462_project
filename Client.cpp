@@ -17,14 +17,14 @@
 Client::Client(std::string ip, std::string po, std::string pr_pa, std::string protocolType, uint64_t timeoutVal, ErrorCreate* er){
 	ip_address = ip; 
 	port = po;
-	//set print_packets appropriatly
+	//set print_detailed appropriatly
 	if (pr_pa.compare("y") == 0)
 	{
-		print_packets = true;
+		print_detailed = true;
 	}
 	else
 	{
-		print_packets = false;
+		print_detailed = false;
 	}
 	errorObj = er;
 	foundEndFile = false;
@@ -37,6 +37,8 @@ Client::Client(std::string ip, std::string po, std::string pr_pa, std::string pr
 		gbn = false;
 	}
 	timeout = timeoutVal;
+	endPacketCount = 0;
+	retransmittedCount = 0;
 }
 
 
@@ -98,7 +100,6 @@ int Client::writeMyPkt(Panel *panel) {
 		//is sent && didn't receive an ack && timed out
 		int timeDifference = milliNow() - (panel+writeLoop)->getTimeSent();
 		if(((panel+writeLoop)->isSent() == 1 && (panel+writeLoop)->isReceived() == 0) &&  timeDifference > timeout){
-			//std::cout << "\nACTUAL TIME: " << timeDifference << " RTT*15 "<< (roundtt * 300)<<"\n";
 			timedOut = true;
 			std::cout << "\nPacket #" << (panel+writeLoop)->getPackNum() << " *****TIMED OUT*****";
 			if(gbn){
@@ -154,19 +155,18 @@ int Client::writeMyPkt(Panel *panel) {
 				std::cout << "writePacket: Packet #" << writeID << " failed to send.\n";
 			}else if(!dontSend){
 				(panel + writeLoop)->markAsSent();
-				//print the packet if appropriate
-				if (print_packets){
-					//std::cout << "\nPacket #" << writeID << " - " << writebuffer << "\n";
-					if(timedOut || (panel + writeLoop)->getRetransmit()){
-						std::cout << "\nPacket #" << (panel + writeLoop)->getSeqNum() << " Re-transmitted";
-						if((panel + writeLoop)->getRetransmit()){
-							(panel + writeLoop)->markUnRetransmit();
-						}
+				
+				if(timedOut || (panel + writeLoop)->getRetransmit()){
+					std::cout << "\nPacket #" << (panel + writeLoop)->getSeqNum() << " Re-transmitted";
+					retransmittedCount++;
+					if((panel + writeLoop)->getRetransmit()){
+						(panel + writeLoop)->markUnRetransmit();
 					}
-					else{
-						std::cout << "\nPacket #" << (panel + writeLoop)->getSeqNum() << " sent";
-					}	
 				}
+				else{
+					std::cout << "\nPacket #" << (panel + writeLoop)->getSeqNum() << " sent";
+				}	
+				
 				time_t sentTime;
 				time(&sentTime);
 						
@@ -243,13 +243,15 @@ void Client::handleExpected(Panel *panel, int window_size){
 	}
 	
 	//print window
-	std::cout << "\nCurrent window = [";
-	for(int loop = 0; loop < window_size; loop++){
-		if(loop == window_size -1){
-			std::cout << (panel + loop)->getPackNum() << "]";
-		}
-		else{
-			std::cout << (panel + loop)->getPackNum() << ", ";
+	if(print_detailed){
+		std::cout << "\nCurrent window = [";
+		for(int loop = 0; loop < window_size; loop++){
+			if(loop == window_size -1){
+				std::cout << (panel + loop)->getPackNum() << "]";
+			}
+			else{
+				std::cout << (panel + loop)->getPackNum() << ", ";
+			}
 		}
 	}
 }
@@ -273,7 +275,9 @@ void Client::readAck(Panel *panel){
 		}
 		else{
 			std::string ack = std::string(readBuffer);
-			std::cout << "\nAck #" << ack << " received";
+			if(print_detailed){
+				std::cout << "\nAck #" << ack << " received";
+			}
 			int ackComp = std::stoi(ack);
 			std::lock_guard<std::mutex> window_lock(windowLock);
 			
@@ -322,16 +326,15 @@ int Client::findAndFillEOF(Panel *panel) {
 	std::lock_guard<std::mutex> window_lock(windowLock);
 	
 	for (int i = 0; i < window_size; i++){
-				if ((panel + i)->isEmpty()){
-					//std::cout<<"sendPacket: Panel found - filling with EOF\n";
-					(panel+i)->setAsOccupied();
-					(panel+i)->setAsLast();
-					//exit while
-					foundEmpty = 1;
-					//exit for
-					i = window_size;
-				}
-			}
+		if ((panel + i)->isEmpty()){
+			(panel+i)->setAsOccupied();
+			(panel+i)->setAsLast();
+			//exit while
+			foundEmpty = 1;
+			//exit for
+			i = window_size;
+		}
+	}
 	return foundEmpty;
 }
 
@@ -351,9 +354,9 @@ void Client::sendPacket(const char *filename, Panel *panel, int pack_size){
 	int result;
 	
 	//open file for reading
-	FILE *openedFile = fopen(filename, "r+");
+	FILE *openedFile = fopen(filename, "r");
 	if (openedFile == NULL){
-		std::cout << "sendpacket: Error opening file to read. (Do you have r+ permissions for this file?)\n";
+		std::cout << "sendpacket: Error opening file to read. (Do you have r permissions for this file?)\n";
 		exit(2);
 	}
 	
@@ -400,13 +403,15 @@ void Client::sendPacket(const char *filename, Panel *panel, int pack_size){
 		emptyNotFound = findAndFillEOF(panel);
 	}
 	
+	endPacketCount = currentPacket;
+	
 	//join threads and close file/socket
 	wPkt.join();
 	rPkt.join();
 	close(socketfd);
 	fclose(openedFile);
 	std::cout << std::dec;
-	std::cout << "\n\nSend Success!\n";
+	std::cout << "\n\nSession successfully terminated!\n";
 }
 
 
@@ -482,11 +487,21 @@ void Client::startThreads(const char *filename, int pack_size, int windowSize, i
 	roundtt = RTT;
 	
 	if(timeout == 0){
-		timeout = (roundtt*500);
+		timeout = (roundtt*1000);
 	}
+	
+	uint64_t startPacketSending = milliNow();
 	
 	std::thread sPkt([&](){ Client::sendPacket(filename, panel, pack_size);});
 	sPkt.join();
+	
+	uint64_t endPacketSending = milliNow();
+	double totalElapsedTime = ((double)endPacketSending-(double)startPacketSending)/1000000;
+	
 	//free(buffer);
-	std::cout<<"End of program\n";
+	std::cout<<"\nNumber of original packets sent: "<< endPacketCount <<"\n";
+	std::cout<<"Number of retransmitted packets: "<< retransmittedCount <<"\n";
+	std::cout<<"Total elapsed time: "<< totalElapsedTime <<" seconds\n";
+	std::cout<<"Total throughput (Mbps): "<< ((double)((pSize+13)*endPacketCount)/1000.0)/totalElapsedTime <<"\n";
+	std::cout<<"Effective throughput (Mbps): "<< ((double)((pSize)*endPacketCount)/1000.0)/totalElapsedTime <<"\n\n";
 }
