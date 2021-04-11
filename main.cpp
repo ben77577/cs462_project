@@ -118,8 +118,12 @@ int main(){
 		std::cin >> packet_size;
 		std::cout << "Window size: ";
 		std::cin >> windowSize;
-		std::cout << "Sequence number range: ";
+		std::cout << "Sequence number range: (<=Window size) ";
 		std::cin >> sequence_max;
+		if(sequence_max<=windowSize) {
+			std::cout<< "Invalid sequence number\n";
+			exit(0);
+		}
 		std::cout << "Type of protocol: (sr or gbn) ";
 		std::cin >> protocolType;
 		std::cout << "Timeout (milliseconds): (enter 0 for ping-calculated) ";
